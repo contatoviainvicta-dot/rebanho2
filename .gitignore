@@ -1,0 +1,27 @@
+# Banco de dados SQLite (gerado automaticamente em runtime)
+pecuaria.db
+*.db
+*.db-shm
+*.db-wal
+
+# Ambientes virtuais Python
+.venv/
+venv/
+env/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Streamlit cache local
+.streamlit/cache/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
