@@ -1,0 +1,11 @@
+[server]
+# Evita o aviso de "missing ScriptRunContext" em logs
+headless = true
+
+[theme]
+# Tema claro padrão — remova esta seção para usar o tema do sistema
+base = "light"
+
+[client]
+# Exibe erros completos apenas em desenvolvimento; em produção use false
+showErrorDetails = false
