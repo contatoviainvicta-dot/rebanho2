@@ -8,12 +8,18 @@ Funções:
 """
 
 import io
+import csv
 from datetime import datetime
 
 import pandas as pd
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    _OPENPYXL = True
+except ImportError:
+    _OPENPYXL = False
 
 try:
     from reportlab.lib.pagesizes import A4
@@ -55,6 +61,18 @@ def _auto_width(ws):
         ws.column_dimensions[col_letter].width = min(max_len + 4, 40)
 
 
+def _excel_fallback_csv(tabelas: dict) -> bytes:
+    """Fallback: CSV multi-seção quando openpyxl não está disponível."""
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    for nome, linhas in tabelas.items():
+        w.writerow([f"=== {nome} ==="])
+        for linha in linhas:
+            w.writerow(linha)
+        w.writerow([])
+    return buf.getvalue().encode("utf-8-sig")
+
+
 def gerar_excel_lote(nome_lote: str, animais: list, pesagens_dict: dict,
                       ocorrencias_dict: dict) -> bytes:
     """
@@ -66,6 +84,16 @@ def gerar_excel_lote(nome_lote: str, animais: list, pesagens_dict: dict,
       ocorrencias_dict → {animal_id: [(id, animal_id, data, tipo, desc,
                                        grav, custo, dias, status), ...]}
     """
+    if not _OPENPYXL:
+        todos_pesos = [p for ps in pesagens_dict.values() for p in ps]
+        todos_oc    = [o for ocs in ocorrencias_dict.values() for o in ocs]
+        return _excel_fallback_csv({
+            "Animais":     [("ID","Identificação","Idade","Lote ID")] + list(animais),
+            "Pesagens":    [("ID","Animal ID","Peso","Data")] + todos_pesos,
+            "Ocorrencias": [("ID","Animal ID","Data","Tipo","Descrição","Gravidade",
+                             "Custo","Dias","Status")] + todos_oc,
+        })
+
     wb = Workbook()
 
     # ---- ABA: RESUMO ----
@@ -156,6 +184,12 @@ def gerar_excel_lote(nome_lote: str, animais: list, pesagens_dict: dict,
 
 def gerar_excel_sanitario(vacinas: list, medicamentos: list) -> bytes:
     """Excel com abas de agenda sanitária e estoque de medicamentos."""
+    if not _OPENPYXL:
+        return _excel_fallback_csv({
+            "Vacinas":      [("ID","Lote ID","Vacina","Previsto","Realizado","Status","Obs")] + list(vacinas),
+            "Medicamentos": [("ID","Nome","Unidade","Estoque","Mínimo","Validade","Custo")] + list(medicamentos),
+        })
+
     wb = Workbook()
 
     ws_v = wb.active
