@@ -1,26 +1,21 @@
 """
-Sistema de Gestão Pecuária — versão corrigida e melhorada.
-Todas as funções originais foram mantidas; apenas bugs foram corrigidos.
+Sistema de Gestão Pecuária — app principal.
+Execute com:  streamlit run app.py
 """
 
 import streamlit as st
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# As funções abaixo são stubs para permitir execução/teste local.
-# No projeto real, substitua pelo import do módulo de banco de dados.
-# ---------------------------------------------------------------------------
-def listar_lotes(): return []
-def listar_animais(): return []
-def listar_animais_por_lote(lote_id): return []
-def listar_pesagens(animal_id): return []
-def listar_ocorrencias(animal_id): return []
-def obter_lote(lote_id): return (None,)*7
-def contar_animais_no_lote(lote_id): return 0
-def adicionar_lote(*a): pass
-def adicionar_animal(*a): pass
-def adicionar_pesagem(*a): pass
-def adicionar_ocorrencia(*a): pass
+from database import (
+    inicializar_banco,
+    adicionar_lote, listar_lotes, obter_lote,
+    adicionar_animal, listar_animais, listar_animais_por_lote, contar_animais_no_lote,
+    adicionar_pesagem, listar_pesagens,
+    adicionar_ocorrencia, listar_ocorrencias,
+)
+
+# Garante que as tabelas existam antes de qualquer operação
+inicializar_banco()
 
 # ---------------------------------------------------------------------------
 # SIDEBAR / MENU
