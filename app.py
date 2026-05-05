@@ -5,24 +5,100 @@ Execute com:  streamlit run app.py
 
 import streamlit as st
 import pandas as pd
+from datetime import date, datetime, timedelta
 
 from database import (
     inicializar_banco,
+    # funções originais
     adicionar_lote, listar_lotes, obter_lote,
     adicionar_animal, listar_animais, listar_animais_por_lote, contar_animais_no_lote,
     adicionar_pesagem, listar_pesagens,
     adicionar_ocorrencia, listar_ocorrencias,
+    # novas funções
+    criar_usuario, autenticar_usuario, listar_usuarios, usuario_existe, alterar_senha,
+    adicionar_fazenda, listar_fazendas,
+    adicionar_vacina_agenda, registrar_vacina_realizada,
+    listar_vacinas_agenda, listar_vacinas_pendentes,
+    adicionar_medicamento, listar_medicamentos, registrar_uso_medicamento,
+    listar_medicamentos_criticos,
+    adicionar_reproducao, atualizar_reproducao, listar_reproducao,
+    listar_partos_previstos, taxa_prenhez_lote,
+    adicionar_piquete, listar_piquetes, alocar_lote_piquete,
+    liberar_piquete, historico_piquete,
 )
+from exports import gerar_excel_lote, gerar_excel_sanitario, gerar_pdf_relatorio
 
-# Garante que as tabelas existam antes de qualquer operação
 inicializar_banco()
 
+# ===========================================================================
+# AUTENTICAÇÃO
+# ===========================================================================
+if "usuario" not in st.session_state:
+    st.session_state.usuario = None
+
+def _tela_login():
+    st.title("🐄 Sistema de Gestão Pecuária")
+    st.subheader("Acesso ao sistema")
+
+    if not usuario_existe():
+        st.info("Nenhum usuário cadastrado. Crie o primeiro acesso abaixo.")
+        with st.form("form_primeiro_usuario"):
+            nome  = st.text_input("Seu nome")
+            email = st.text_input("E-mail")
+            senha = st.text_input("Senha", type="password")
+            perfil = st.selectbox("Perfil", ["veterinario", "fazendeiro", "admin"])
+            if st.form_submit_button("Criar conta"):
+                if nome and email and senha:
+                    criar_usuario(nome, email, senha, perfil)
+                    st.success("Conta criada! Faça login.")
+                    st.rerun()
+                else:
+                    st.error("Preencha todos os campos.")
+        return
+
+    with st.form("form_login"):
+        email = st.text_input("E-mail")
+        senha = st.text_input("Senha", type="password")
+        if st.form_submit_button("Entrar"):
+            u = autenticar_usuario(email, senha)
+            if u:
+                st.session_state.usuario = u
+                st.rerun()
+            else:
+                st.error("E-mail ou senha incorretos.")
+
+if st.session_state.usuario is None:
+    _tela_login()
+    st.stop()
+
 # ---------------------------------------------------------------------------
-# SIDEBAR / MENU
+# SIDEBAR — usuário logado
 # ---------------------------------------------------------------------------
+u = st.session_state.usuario
+st.sidebar.markdown(f"👤 **{u['nome']}**  \n*{u['perfil']}*")
+if st.sidebar.button("Sair"):
+    st.session_state.usuario = None
+    st.rerun()
+
+st.sidebar.divider()
+
+# Alertas rápidos na sidebar
+_pendentes = listar_vacinas_pendentes()
+_criticos  = listar_medicamentos_criticos()
+_partos    = listar_partos_previstos()
+if _pendentes:
+    st.sidebar.warning(f"💉 {len(_pendentes)} vacina(s) pendente(s)")
+if _criticos:
+    st.sidebar.error(f"💊 {len(_criticos)} medicamento(s) em alerta")
+if _partos:
+    st.sidebar.info(f"🐄 {len(_partos)} parto(s) previstos em 30 dias")
+
+st.sidebar.divider()
+
 menu = st.sidebar.selectbox(
     "Menu",
     [
+        # ── originais ──────────────────────────────
         "Cadastrar Lote",
         "Dashboard Sanitário",
         "Cadastrar Animal",
@@ -33,6 +109,14 @@ menu = st.sidebar.selectbox(
         "Painel de Decisão",
         "Pesquisar Ocorrências",
         "Dashboard Executivo",
+        # ── novos ──────────────────────────────────
+        "── Novos Módulos ──",
+        "Calendário Sanitário",
+        "Estoque de Medicamentos",
+        "Controle Reprodutivo",
+        "Mapa de Piquetes",
+        "Exportar Relatórios",
+        "Administração",
     ],
 )
 
@@ -1064,3 +1148,483 @@ elif menu == "Dashboard Executivo":
     st.write(f"🐄 Animais: {numero_animais}")
     st.write(f"⚖️ Ganho total: {ganho_total:.2f} kg")
     st.write(f"💸 Custo sanitário: R$ {custo_sanitario:.2f}")
+
+# ===========================================================================
+# SEPARADOR DE MENU (item não clicável)
+# ===========================================================================
+elif menu == "── Novos Módulos ──":
+    st.info("Selecione um módulo no menu lateral.")
+
+# ===========================================================================
+# CALENDÁRIO SANITÁRIO
+# ===========================================================================
+elif menu == "Calendário Sanitário":
+    st.title("💉 Calendário Sanitário")
+
+    tab1, tab2, tab3 = st.tabs(["📋 Agenda", "➕ Agendar Vacina", "✅ Registrar Realização"])
+
+    with tab1:
+        st.subheader("Agenda de Vacinas")
+        lotes = listar_lotes()
+        opcoes = ["Todos os lotes"] + [f"{l[1]} (ID {l[0]})" for l in lotes]
+        dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        filtro = st.selectbox("Filtrar por lote", opcoes, key="cal_filtro")
+
+        lote_id_fil = dict_lotes.get(filtro) if filtro != "Todos os lotes" else None
+        vacinas = listar_vacinas_agenda(lote_id_fil)
+
+        if vacinas:
+            df_v = pd.DataFrame(vacinas, columns=["ID","Lote ID","Vacina","Previsto","Realizado","Status","Observação"])
+            df_v["Previsto"] = pd.to_datetime(df_v["Previsto"]).dt.strftime("%d/%m/%Y")
+            df_v["Realizado"] = pd.to_datetime(df_v["Realizado"], errors="coerce").dt.strftime("%d/%m/%Y")
+
+            hoje = date.today()
+            for _, row in df_v.iterrows():
+                try:
+                    dt_prev = datetime.strptime(row["Previsto"], "%d/%m/%Y").date()
+                    atrasado = dt_prev < hoje and row["Status"] == "pendente"
+                except Exception:
+                    atrasado = False
+                if row["Status"] == "realizado":
+                    st.success(f"✅ {row['Vacina']} — Lote {row['Lote ID']} — Realizado em {row['Realizado']}")
+                elif atrasado:
+                    st.error(f"🔴 ATRASADA: {row['Vacina']} — Previsto {row['Previsto']}")
+                else:
+                    st.warning(f"🟡 Pendente: {row['Vacina']} — Previsto {row['Previsto']}")
+
+            st.dataframe(df_v, use_container_width=True)
+
+            # Exportar
+            vacinas_todas = listar_vacinas_agenda()
+            meds = listar_medicamentos()
+            xls = gerar_excel_sanitario(vacinas_todas, meds)
+            st.download_button("⬇️ Exportar Excel", xls,
+                               "agenda_sanitaria.xlsx",
+                               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        else:
+            st.info("Nenhuma vacina agendada.")
+
+    with tab2:
+        st.subheader("Agendar Vacina / Medicação")
+        lotes = listar_lotes()
+        if not lotes:
+            st.warning("Cadastre um lote primeiro.")
+        else:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            with st.form("form_vacina"):
+                lote_sel = st.selectbox("Lote", list(dict_l.keys()))
+                nome_vac = st.text_input("Nome da vacina / procedimento")
+                data_prev = st.date_input("Data prevista", value=date.today() + timedelta(days=7))
+                obs = st.text_area("Observação")
+                if st.form_submit_button("Agendar"):
+                    if nome_vac:
+                        adicionar_vacina_agenda(dict_l[lote_sel], nome_vac, str(data_prev), obs)
+                        st.success("Vacina agendada!")
+                        st.rerun()
+                    else:
+                        st.error("Informe o nome da vacina.")
+
+    with tab3:
+        st.subheader("Registrar Vacina Realizada")
+        pendentes = listar_vacinas_pendentes()
+        if not pendentes:
+            st.success("Nenhuma vacina pendente.")
+        else:
+            df_p = pd.DataFrame(pendentes,
+                                columns=["ID","Lote ID","Lote","Vacina","Previsto","Status","Obs"])
+            opcoes_v = {f"{r['Vacina']} — {r['Lote']} (prev. {r['Previsto']})": r["ID"]
+                        for _, r in df_p.iterrows()}
+            with st.form("form_real"):
+                sel = st.selectbox("Vacina", list(opcoes_v.keys()))
+                data_real = st.date_input("Data de realização", value=date.today())
+                if st.form_submit_button("Confirmar Realização"):
+                    registrar_vacina_realizada(opcoes_v[sel], str(data_real))
+                    st.success("Registrado!")
+                    st.rerun()
+
+# ===========================================================================
+# ESTOQUE DE MEDICAMENTOS
+# ===========================================================================
+elif menu == "Estoque de Medicamentos":
+    st.title("💊 Estoque de Medicamentos")
+
+    tab1, tab2, tab3 = st.tabs(["📦 Estoque Atual", "➕ Cadastrar", "💉 Registrar Uso"])
+
+    with tab1:
+        meds = listar_medicamentos()
+        criticos = listar_medicamentos_criticos()
+
+        if criticos:
+            st.error(f"🚨 {len(criticos)} medicamento(s) em alerta de estoque ou validade:")
+            for m in criticos:
+                motivo = "estoque baixo" if m[3] <= m[4] else f"vence em {m[5]}"
+                st.warning(f"⚠️ {m[1]} — {m[3]:.1f} {m[2]} ({motivo})")
+
+        if meds:
+            df_m = pd.DataFrame(meds,
+                                columns=["ID","Nome","Unidade","Estoque Atual",
+                                         "Estoque Mínimo","Validade","Custo Unit. R$"])
+            st.dataframe(df_m, use_container_width=True)
+
+            col1, col2 = st.columns(2)
+            valor_total = sum(m[3] * m[6] for m in meds)
+            col1.metric("💰 Valor total em estoque", f"R$ {valor_total:.2f}")
+            col2.metric("📦 Itens cadastrados", len(meds))
+
+            # Exportar
+            vacinas_todas = listar_vacinas_agenda()
+            xls = gerar_excel_sanitario(vacinas_todas, meds)
+            st.download_button("⬇️ Exportar Excel", xls,
+                               "estoque_medicamentos.xlsx",
+                               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        else:
+            st.info("Nenhum medicamento cadastrado.")
+
+    with tab2:
+        with st.form("form_med"):
+            nome_m = st.text_input("Nome do medicamento")
+            unid   = st.selectbox("Unidade", ["dose","mL","g","comprimido","frasco","kg"])
+            estq   = st.number_input("Estoque inicial", 0.0, step=1.0)
+            est_min = st.number_input("Estoque mínimo (alerta)", 0.0, step=1.0)
+            valid  = st.date_input("Validade")
+            custo  = st.number_input("Custo unitário (R$)", 0.0)
+            if st.form_submit_button("Cadastrar"):
+                if nome_m:
+                    adicionar_medicamento(nome_m, unid, estq, est_min, str(valid), custo)
+                    st.success("Medicamento cadastrado!")
+                    st.rerun()
+                else:
+                    st.error("Informe o nome.")
+
+    with tab3:
+        meds = listar_medicamentos()
+        lotes = listar_lotes()
+        if not meds:
+            st.warning("Cadastre medicamentos primeiro.")
+        elif not lotes:
+            st.warning("Cadastre um lote primeiro.")
+        else:
+            dict_m = {f"{m[1]} ({m[3]:.1f} {m[2]})": m[0] for m in meds}
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            with st.form("form_uso"):
+                med_sel  = st.selectbox("Medicamento", list(dict_m.keys()))
+                lote_sel = st.selectbox("Lote", list(dict_l.keys()))
+                animais  = listar_animais_por_lote(dict_l[lote_sel])
+                dict_a   = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+                anim_sel = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["—"])
+                qtd_uso  = st.number_input("Quantidade utilizada", 0.01, step=0.5)
+                data_uso = st.date_input("Data")
+                if st.form_submit_button("Registrar Uso") and dict_a:
+                    registrar_uso_medicamento(
+                        dict_m[med_sel], dict_a[anim_sel], str(data_uso), qtd_uso
+                    )
+                    st.success("Uso registrado e estoque atualizado!")
+                    st.rerun()
+
+# ===========================================================================
+# CONTROLE REPRODUTIVO
+# ===========================================================================
+elif menu == "Controle Reprodutivo":
+    st.title("🐄 Controle Reprodutivo")
+
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["📊 Indicadores", "➕ Registrar Cobertura", "✏️ Atualizar Diagnóstico", "🗓️ Partos Previstos"]
+    )
+
+    with tab1:
+        lotes = listar_lotes()
+        if not lotes:
+            st.warning("Nenhum lote cadastrado.")
+        else:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            lote_sel = st.selectbox("Lote", list(dict_l.keys()), key="rep_lote")
+            lote_id = dict_l[lote_sel]
+
+            tp = taxa_prenhez_lote(lote_id)
+            col1, col2, col3 = st.columns(3)
+            col1.metric("🐄 Animais com registro", tp["total"])
+            col2.metric("✅ Gestações confirmadas", tp["positivas"])
+            col3.metric("📊 Taxa de prenhez", f"{tp['taxa']:.1f}%")
+
+            animais = listar_animais_por_lote(lote_id)
+            dados = []
+            for a in animais:
+                repros = listar_reproducao(a[0])
+                if repros:
+                    r = repros[0]
+                    dados.append({
+                        "Animal": a[1],
+                        "Tipo": r[3],
+                        "Data Cio": r[2] or "—",
+                        "Diagnóstico": r[4] or "—",
+                        "Resultado": r[5],
+                        "Parto Previsto": r[6] or "—",
+                        "Parto Real": r[7] or "—",
+                    })
+            if dados:
+                st.dataframe(pd.DataFrame(dados), use_container_width=True)
+            else:
+                st.info("Nenhum registro reprodutivo neste lote.")
+
+    with tab2:
+        lotes = listar_lotes()
+        if not lotes:
+            st.warning("Nenhum lote cadastrado.")
+        else:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            with st.form("form_cobertura"):
+                lote_s = st.selectbox("Lote", list(dict_l.keys()))
+                animais = listar_animais_por_lote(dict_l[lote_s])
+                dict_a  = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+                anim_s  = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["—"])
+                tipo_c  = st.selectbox("Tipo de cobertura", ["IATF","Monta Natural","TE"])
+                data_cio = st.date_input("Data do cio / IATF")
+                obs_r    = st.text_area("Observação")
+                if st.form_submit_button("Registrar") and dict_a:
+                    adicionar_reproducao(dict_a[anim_s], tipo_c,
+                                         data_cio=str(data_cio), observacao=obs_r)
+                    st.success("Cobertura registrada!")
+                    st.rerun()
+
+    with tab3:
+        lotes = listar_lotes()
+        if lotes:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            lote_s = st.selectbox("Lote", list(dict_l.keys()), key="rep_upd_lote")
+            animais = listar_animais_por_lote(dict_l[lote_s])
+            dict_a  = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+            if dict_a:
+                anim_s = st.selectbox("Animal", list(dict_a.keys()), key="rep_upd_anim")
+                repros = listar_reproducao(dict_a[anim_s])
+                if repros:
+                    r = repros[0]
+                    st.info(f"Último registro: tipo={r[3]}, resultado atual={r[5]}")
+                    with st.form("form_diag"):
+                        resultado  = st.selectbox("Resultado diagnóstico",
+                                                   ["pendente","positivo","negativo"])
+                        data_diag  = st.date_input("Data do diagnóstico")
+                        parto_prev = st.date_input("Parto previsto (se positivo)",
+                                                    value=date.today() + timedelta(days=283))
+                        if st.form_submit_button("Salvar Diagnóstico"):
+                            atualizar_reproducao(r[0], resultado,
+                                                  data_diagnostico=str(data_diag),
+                                                  data_parto_previsto=str(parto_prev)
+                                                  if resultado == "positivo" else None)
+                            st.success("Diagnóstico atualizado!")
+                            st.rerun()
+                else:
+                    st.info("Sem registros reprodutivos para este animal.")
+
+    with tab4:
+        partos = listar_partos_previstos()
+        if partos:
+            st.warning(f"🗓️ {len(partos)} parto(s) previstos nos próximos 30 dias:")
+            df_p = pd.DataFrame(partos,
+                                columns=["ID","Animal","Lote","Parto Previsto","Tipo"])
+            st.dataframe(df_p, use_container_width=True)
+        else:
+            st.success("Nenhum parto previsto para os próximos 30 dias.")
+
+# ===========================================================================
+# MAPA DE PIQUETES
+# ===========================================================================
+elif menu == "Mapa de Piquetes":
+    st.title("🌿 Mapa de Piquetes e Pastagens")
+
+    tab1, tab2, tab3 = st.tabs(["📋 Piquetes", "➕ Cadastrar", "🔄 Alocar / Liberar"])
+
+    with tab1:
+        piquetes = listar_piquetes()
+        if piquetes:
+            df_pq = pd.DataFrame(piquetes,
+                                  columns=["ID","Fazenda ID","Nome","Área (ha)","Cap. UA"])
+            st.dataframe(df_pq, use_container_width=True)
+
+            col1, col2 = st.columns(2)
+            col1.metric("🌿 Total de piquetes", len(piquetes))
+            area_total = sum(p[3] for p in piquetes)
+            col2.metric("📐 Área total (ha)", f"{area_total:.1f}")
+
+            st.subheader("📜 Histórico de ocupação")
+            dict_pq = {f"{p[2]} (ID {p[0]})": p[0] for p in piquetes}
+            sel_pq = st.selectbox("Piquete", list(dict_pq.keys()))
+            hist = historico_piquete(dict_pq[sel_pq])
+            if hist:
+                df_h = pd.DataFrame(hist, columns=["ID","Lote","Entrada","Saída"])
+                st.dataframe(df_h, use_container_width=True)
+            else:
+                st.info("Nenhum histórico para este piquete.")
+        else:
+            st.info("Nenhum piquete cadastrado.")
+
+    with tab2:
+        with st.form("form_piquete"):
+            nome_pq = st.text_input("Nome do piquete")
+            area    = st.number_input("Área (ha)", 0.0, step=0.5)
+            cap_ua  = st.number_input("Capacidade (UA)", 0.0, step=1.0)
+            if st.form_submit_button("Cadastrar"):
+                if nome_pq:
+                    adicionar_piquete(nome_pq, area, cap_ua)
+                    st.success("Piquete cadastrado!")
+                    st.rerun()
+                else:
+                    st.error("Informe o nome.")
+
+    with tab3:
+        piquetes = listar_piquetes()
+        lotes    = listar_lotes()
+        if not piquetes or not lotes:
+            st.warning("Cadastre piquetes e lotes primeiro.")
+        else:
+            dict_pq = {f"{p[2]} (ID {p[0]})": p[0] for p in piquetes}
+            dict_l  = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("Alocar lote")
+                with st.form("form_alocar"):
+                    pq_sel  = st.selectbox("Piquete", list(dict_pq.keys()), key="al_pq")
+                    lt_sel  = st.selectbox("Lote", list(dict_l.keys()), key="al_lt")
+                    dt_ent  = st.date_input("Data de entrada", key="al_dt")
+                    if st.form_submit_button("Alocar"):
+                        alocar_lote_piquete(dict_pq[pq_sel], dict_l[lt_sel], str(dt_ent))
+                        st.success("Lote alocado!")
+                        st.rerun()
+            with col2:
+                st.subheader("Liberar piquete")
+                with st.form("form_liberar"):
+                    pq_sel2 = st.selectbox("Piquete", list(dict_pq.keys()), key="lib_pq")
+                    dt_said = st.date_input("Data de saída", key="lib_dt")
+                    if st.form_submit_button("Liberar"):
+                        liberar_piquete(dict_pq[pq_sel2], str(dt_said))
+                        st.success("Piquete liberado!")
+                        st.rerun()
+
+# ===========================================================================
+# EXPORTAR RELATÓRIOS
+# ===========================================================================
+elif menu == "Exportar Relatórios":
+    st.title("📄 Exportar Relatórios")
+
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+        st.stop()
+
+    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+    lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()))
+    lote_id  = dict_l[lote_sel]
+    nome_lote = lote_sel.split(" (ID")[0]
+
+    animais = listar_animais_por_lote(lote_id)
+    pesagens_dict    = {a[0]: listar_pesagens(a[0])    for a in animais}
+    ocorrencias_dict = {a[0]: listar_ocorrencias(a[0]) for a in animais}
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("📊 Excel — Dados do Lote")
+        st.write("Abas: Resumo, Animais, Pesagens, Ocorrências")
+        if st.button("Gerar Excel"):
+            xls = gerar_excel_lote(nome_lote, animais, pesagens_dict, ocorrencias_dict)
+            st.download_button(
+                "⬇️ Baixar Excel",
+                xls,
+                f"lote_{nome_lote.replace(' ','_')}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+    with col2:
+        st.subheader("📋 PDF — Relatório do Lote")
+        st.write("Resumo + tabelas de animais, pesagens e ocorrências")
+        if st.button("Gerar PDF"):
+            df_anim = pd.DataFrame(animais, columns=["ID","Identificação","Idade","Lote ID"])
+
+            todos_pesos = [p for ps in pesagens_dict.values() for p in ps]
+            df_peso = pd.DataFrame(todos_pesos,
+                                    columns=["ID","Animal ID","Peso (kg)","Data"]) if todos_pesos else pd.DataFrame()
+
+            todos_oc = [o for ocs in ocorrencias_dict.values() for o in ocs]
+            df_oc = pd.DataFrame(todos_oc,
+                                  columns=["ID","Animal ID","Data","Tipo","Descrição",
+                                           "Gravidade","Custo","Dias","Status"]) if todos_oc else pd.DataFrame()
+
+            secoes = [
+                {"titulo": "Animais do lote",  "df": df_anim},
+                {"titulo": "Histórico de pesagens", "df": df_peso},
+                {"titulo": "Ocorrências registradas", "df": df_oc},
+            ]
+            pdf = gerar_pdf_relatorio(f"Relatório — {nome_lote}", secoes)
+            st.download_button(
+                "⬇️ Baixar PDF",
+                pdf,
+                f"relatorio_{nome_lote.replace(' ','_')}.pdf",
+                "application/pdf",
+            )
+
+    st.divider()
+    st.subheader("💊 Excel — Calendário Sanitário e Medicamentos")
+    if st.button("Gerar Excel Sanitário"):
+        vacinas = listar_vacinas_agenda()
+        meds    = listar_medicamentos()
+        xls = gerar_excel_sanitario(vacinas, meds)
+        st.download_button(
+            "⬇️ Baixar Excel Sanitário",
+            xls,
+            "sanitario.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+# ===========================================================================
+# ADMINISTRAÇÃO
+# ===========================================================================
+elif menu == "Administração":
+    st.title("⚙️ Administração")
+
+    # Só admin vê tudo; outros veem apenas alterar senha
+    is_admin = u["perfil"] == "admin"
+
+    tab1, tab2 = st.tabs(["👤 Usuários", "🔑 Alterar Minha Senha"])
+
+    with tab1:
+        if not is_admin:
+            st.warning("Acesso restrito a administradores.")
+        else:
+            st.subheader("Usuários cadastrados")
+            usuarios = listar_usuarios()
+            if usuarios:
+                df_u = pd.DataFrame(usuarios,
+                                     columns=["ID","Nome","E-mail","Perfil","Fazenda ID"])
+                st.dataframe(df_u, use_container_width=True)
+
+            st.subheader("Criar novo usuário")
+            with st.form("form_novo_user"):
+                n_nome   = st.text_input("Nome")
+                n_email  = st.text_input("E-mail")
+                n_senha  = st.text_input("Senha", type="password")
+                n_perfil = st.selectbox("Perfil", ["fazendeiro","veterinario","admin"])
+                if st.form_submit_button("Criar"):
+                    if n_nome and n_email and n_senha:
+                        try:
+                            criar_usuario(n_nome, n_email, n_senha, n_perfil)
+                            st.success("Usuário criado!")
+                            st.rerun()
+                        except Exception:
+                            st.error("E-mail já cadastrado.")
+                    else:
+                        st.error("Preencha todos os campos.")
+
+    with tab2:
+        with st.form("form_senha"):
+            senha_atual = st.text_input("Senha atual", type="password")
+            nova_senha  = st.text_input("Nova senha", type="password")
+            conf_senha  = st.text_input("Confirmar nova senha", type="password")
+            if st.form_submit_button("Alterar Senha"):
+                if not autenticar_usuario(u["email"], senha_atual):
+                    st.error("Senha atual incorreta.")
+                elif nova_senha != conf_senha:
+                    st.error("As senhas não coincidem.")
+                elif len(nova_senha) < 6:
+                    st.error("Senha deve ter ao menos 6 caracteres.")
+                else:
+                    alterar_senha(u["id"], nova_senha)
+                    st.success("Senha alterada com sucesso!")
