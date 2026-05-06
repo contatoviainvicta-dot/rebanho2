@@ -184,13 +184,19 @@ def inicializar_banco() -> None:
 def _migrar():
     """Adiciona colunas novas sem perder dados existentes."""
     novas_colunas = [
-        ("animais", "sexo TEXT DEFAULT 'indefinido'"),
-        ("animais", "raca TEXT DEFAULT ''"),
-        ("animais", "peso_entrada REAL DEFAULT 0"),
-        ("lotes",   "fazenda_id INTEGER DEFAULT NULL"),
-        ("lotes",   "tipo_alimentacao TEXT DEFAULT 'Pasto'"),
-        ("lotes",   "tipo_dieta TEXT DEFAULT 'Capim'"),
-        ("lotes",   "preco_por_animal REAL DEFAULT 0"),
+        ("animais",  "sexo TEXT DEFAULT 'indefinido'"),
+        ("animais",  "raca TEXT DEFAULT ''"),
+        ("animais",  "peso_entrada REAL DEFAULT 0"),
+        ("lotes",    "fazenda_id INTEGER DEFAULT NULL"),
+        ("lotes",    "tipo_alimentacao TEXT DEFAULT 'Pasto'"),
+        ("lotes",    "tipo_dieta TEXT DEFAULT 'Capim'"),
+        ("lotes",    "preco_por_animal REAL DEFAULT 0"),
+        ("usuarios", "trial_inicio TEXT DEFAULT NULL"),
+        ("usuarios", "plano TEXT DEFAULT 'trial'"),
+        ("usuarios", "plano_expira TEXT DEFAULT NULL"),
+        ("animais",  "foto_path TEXT DEFAULT NULL"),
+        ("animais",  "observacoes TEXT DEFAULT ''"),
+        ("animais",  "peso_alvo REAL DEFAULT 0"),
     ]
     with _conexao() as conn:
         for tabela, coluna_def in novas_colunas:
@@ -637,3 +643,214 @@ def historico_piquete(piquete_id: int):
             (piquete_id,),
         ).fetchall()
         return [tuple(r) for r in rows]
+
+
+# ===========================================================================
+# TRIAL / PLANO
+# ===========================================================================
+
+from datetime import date as _date, timedelta as _td
+
+TRIAL_DIAS = 30
+
+def ativar_trial(usuario_id: int):
+    """Define trial_inicio=hoje e plano_expira=hoje+30 para o usuário."""
+    hoje = str(_date.today())
+    expira = str(_date.today() + _td(days=TRIAL_DIAS))
+    with _conexao() as conn:
+        conn.execute(
+            "UPDATE usuarios SET trial_inicio=?, plano='trial', plano_expira=? WHERE id=?",
+            (hoje, expira, usuario_id),
+        )
+
+
+def obter_status_plano(usuario_id: int) -> dict:
+    """
+    Retorna dict com:
+      plano          : 'trial' | 'pago' | 'expirado'
+      dias_restantes : int (negativo se expirado)
+      trial_inicio   : str | None
+      plano_expira   : str | None
+      pode_exportar  : bool  (False no trial / expirado)
+      ativo          : bool
+    """
+    with _conexao() as conn:
+        row = conn.execute(
+            "SELECT plano, trial_inicio, plano_expira, ativo FROM usuarios WHERE id=?",
+            (usuario_id,),
+        ).fetchone()
+
+    if not row:
+        return dict(plano="expirado", dias_restantes=0, trial_inicio=None,
+                    plano_expira=None, pode_exportar=False, ativo=False)
+
+    plano        = row["plano"] or "trial"
+    trial_inicio = row["trial_inicio"]
+    plano_expira = row["plano_expira"]
+    ativo        = bool(row["ativo"])
+
+    hoje = _date.today()
+
+    # Usuário que nunca teve trial_inicio → ativar agora
+    if plano == "trial" and not trial_inicio:
+        ativar_trial(usuario_id)
+        trial_inicio = str(hoje)
+        plano_expira = str(hoje + _td(days=TRIAL_DIAS))
+
+    dias_restantes = 0
+    if plano_expira:
+        dias_restantes = (_date.fromisoformat(plano_expira) - hoje).days
+
+    if plano == "pago":
+        status = "pago"
+        pode_exportar = True
+    elif dias_restantes > 0:
+        status = "trial"
+        pode_exportar = False   # exportação liberada só no plano pago
+    else:
+        status = "expirado"
+        pode_exportar = False
+
+    return dict(
+        plano=status,
+        dias_restantes=dias_restantes,
+        trial_inicio=trial_inicio,
+        plano_expira=plano_expira,
+        pode_exportar=pode_exportar,
+        ativo=ativo,
+    )
+
+
+def converter_para_pago(usuario_id: int):
+    """Marca o usuário como plano pago (sem expiração)."""
+    with _conexao() as conn:
+        conn.execute(
+            "UPDATE usuarios SET plano='pago', plano_expira=NULL WHERE id=?",
+            (usuario_id,),
+        )
+
+
+def listar_usuarios_trial_expirando(dias: int = 7) -> list:
+    """Retorna usuários com trial expirando nos próximos `dias` dias."""
+    limite = str(_date.today() + _td(days=dias))
+    hoje   = str(_date.today())
+    with _conexao() as conn:
+        rows = conn.execute(
+            """SELECT id, nome, email, plano_expira
+               FROM usuarios
+               WHERE plano='trial'
+                 AND plano_expira IS NOT NULL
+                 AND plano_expira >= ?
+                 AND plano_expira <= ?
+               ORDER BY plano_expira""",
+            (hoje, limite),
+        ).fetchall()
+    return [tuple(r) for r in rows]
+
+
+# ===========================================================================
+# PRONTUÁRIO — FOTO / DOCUMENTOS DO ANIMAL
+# ===========================================================================
+
+def atualizar_animal_detalhes(animal_id: int, peso_alvo: float = None,
+                               observacoes: str = None, foto_path: str = None):
+    """Atualiza campos extras do animal sem sobrescrever os outros."""
+    campos, vals = [], []
+    if peso_alvo is not None:
+        campos.append("peso_alvo=?"); vals.append(peso_alvo)
+    if observacoes is not None:
+        campos.append("observacoes=?"); vals.append(observacoes)
+    if foto_path is not None:
+        campos.append("foto_path=?"); vals.append(foto_path)
+    if not campos:
+        return
+    vals.append(animal_id)
+    with _conexao() as conn:
+        conn.execute(f"UPDATE animais SET {', '.join(campos)} WHERE id=?", vals)
+
+
+def obter_animal(animal_id: int) -> tuple | None:
+    """
+    Retorna tupla completa do animal:
+    (id, identificacao, idade, lote_id, sexo, raca, peso_entrada,
+     peso_alvo, observacoes, foto_path)
+    """
+    with _conexao() as conn:
+        row = conn.execute(
+            """SELECT id, identificacao, idade, lote_id,
+                      COALESCE(sexo,'indefinido') as sexo,
+                      COALESCE(raca,'') as raca,
+                      COALESCE(peso_entrada,0) as peso_entrada,
+                      COALESCE(peso_alvo,0) as peso_alvo,
+                      COALESCE(observacoes,'') as observacoes,
+                      COALESCE(foto_path,NULL) as foto_path
+               FROM animais WHERE id=?""",
+            (animal_id,),
+        ).fetchone()
+    return tuple(row) if row else None
+
+
+# ===========================================================================
+# PREVISÃO DE ABATE
+# ===========================================================================
+
+def calcular_previsao_abate(animal_id: int) -> dict:
+    """
+    Calcula data estimada de abate com base no GMD atual e peso alvo.
+    Retorna dict com: gmd, peso_atual, peso_alvo, dias_restantes,
+                      data_prevista, confianca
+    """
+    import pandas as pd
+    from datetime import date as dt
+
+    animal = obter_animal(animal_id)
+    if not animal:
+        return {}
+
+    peso_alvo = animal[7]  # índice 7
+    pesagens  = listar_pesagens(animal_id)
+
+    if len(pesagens) < 2 or peso_alvo <= 0:
+        return dict(erro="Necessário ≥ 2 pesagens e peso alvo definido")
+
+    df = pd.DataFrame(pesagens, columns=["id","aid","peso","data"])
+    df["data"] = pd.to_datetime(df["data"])
+    df = df.sort_values("data")
+
+    peso_atual = df["peso"].iloc[-1]
+    dias_hist  = (df["data"].iloc[-1] - df["data"].iloc[0]).days
+
+    if dias_hist == 0:
+        return dict(erro="Datas de pesagem idênticas")
+
+    gmd = (peso_atual - df["peso"].iloc[0]) / dias_hist
+
+    if gmd <= 0:
+        return dict(erro="GMD negativo — animal perdendo peso")
+
+    if peso_atual >= peso_alvo:
+        return dict(
+            gmd=round(gmd, 3), peso_atual=peso_atual,
+            peso_alvo=peso_alvo, dias_restantes=0,
+            data_prevista=str(dt.today()), confianca="pronto",
+        )
+
+    dias_rest = int((peso_alvo - peso_atual) / gmd)
+    data_prev = dt.today() + _td(days=dias_rest)
+
+    # confiança: baseada em nº de pesagens e consistência do GMD
+    if len(pesagens) >= 5:
+        confianca = "alta"
+    elif len(pesagens) >= 3:
+        confianca = "media"
+    else:
+        confianca = "baixa"
+
+    return dict(
+        gmd=round(gmd, 3),
+        peso_atual=round(peso_atual, 1),
+        peso_alvo=round(peso_alvo, 1),
+        dias_restantes=dias_rest,
+        data_prevista=str(data_prev),
+        confianca=confianca,
+    )
