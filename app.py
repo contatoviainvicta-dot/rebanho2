@@ -1,3 +1,4 @@
+
 """
 Sistema de Gestão Pecuária — app principal.
 Execute com:  streamlit run app.py
@@ -14,19 +15,33 @@ from database import (
     adicionar_animal, listar_animais, listar_animais_por_lote, contar_animais_no_lote,
     adicionar_pesagem, listar_pesagens,
     adicionar_ocorrencia, listar_ocorrencias,
-    # novas funções
+    # usuários / auth
     criar_usuario, autenticar_usuario, listar_usuarios, usuario_existe, alterar_senha,
+    # fazendas
     adicionar_fazenda, listar_fazendas,
+    # calendário sanitário
     adicionar_vacina_agenda, registrar_vacina_realizada,
     listar_vacinas_agenda, listar_vacinas_pendentes,
+    # medicamentos
     adicionar_medicamento, listar_medicamentos, registrar_uso_medicamento,
     listar_medicamentos_criticos,
+    # reprodução
     adicionar_reproducao, atualizar_reproducao, listar_reproducao,
     listar_partos_previstos, taxa_prenhez_lote,
+    # piquetes
     adicionar_piquete, listar_piquetes, alocar_lote_piquete,
     liberar_piquete, historico_piquete,
+    # trial / plano
+    obter_status_plano, converter_para_pago, listar_usuarios_trial_expirando,
+    # prontuário / abate
+    atualizar_animal_detalhes, obter_animal, calcular_previsao_abate,
 )
 from exports import gerar_excel_lote, gerar_excel_sanitario, gerar_pdf_relatorio
+from notifications import (
+    email_boas_vindas, email_trial_expirando, email_trial_expirado,
+    email_vacina_pendente, email_medicamento_critico,
+    email_parto_previsto, email_abate_previsto, email_configurado,
+)
 
 inicializar_banco()
 
@@ -49,8 +64,11 @@ def _tela_login():
             perfil = st.selectbox("Perfil", ["veterinario", "fazendeiro", "admin"])
             if st.form_submit_button("Criar conta"):
                 if nome and email and senha:
-                    criar_usuario(nome, email, senha, perfil)
-                    st.success("Conta criada! Faça login.")
+                    from database import ativar_trial
+                    uid = criar_usuario(nome, email, senha, perfil)
+                    ativar_trial(uid)
+                    email_boas_vindas(email, nome)
+                    st.success("Conta criada! Você tem 30 dias de trial gratuito. Faça login.")
                     st.rerun()
                 else:
                     st.error("Preencha todos os campos.")
@@ -79,6 +97,25 @@ st.sidebar.markdown(f"👤 **{u['nome']}**  \n*{u['perfil']}*")
 if st.sidebar.button("Sair"):
     st.session_state.usuario = None
     st.rerun()
+
+# --- Banner de trial na sidebar ---
+_status_plano = obter_status_plano(u["id"])
+if _status_plano["plano"] == "trial":
+    _dr = _status_plano["dias_restantes"]
+    if _dr <= 3:
+        st.sidebar.error(f"🔴 Trial: {_dr} dia(s) restante(s)!")
+    elif _dr <= 7:
+        st.sidebar.warning(f"⚠️ Trial: {_dr} dias restantes")
+        if email_configurado():
+            email_trial_expirando(u["email"], u["nome"], _dr)
+    else:
+        st.sidebar.info(f"🕐 Trial: {_dr} dias restantes")
+elif _status_plano["plano"] == "expirado":
+    st.sidebar.error("🔴 Trial expirado — somente leitura")
+    if email_configurado():
+        email_trial_expirado(u["email"], u["nome"])
+else:
+    st.sidebar.success("✅ Plano ativo")
 
 st.sidebar.divider()
 
@@ -116,6 +153,9 @@ menu = st.sidebar.selectbox(
         "Controle Reprodutivo",
         "Mapa de Piquetes",
         "Exportar Relatórios",
+        "Previsão de Abate",
+        "Prontuário do Animal",
+        "Notificações",
         "Administração",
     ],
 )
@@ -1628,3 +1668,267 @@ elif menu == "Administração":
                 else:
                     alterar_senha(u["id"], nova_senha)
                     st.success("Senha alterada com sucesso!")
+
+# ===========================================================================
+# PREVISÃO DE ABATE
+# ===========================================================================
+elif menu == "Previsão de Abate":
+    st.title("🥩 Previsão de Abate")
+
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+        st.stop()
+
+    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+    lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()))
+    lote_id  = dict_l[lote_sel]
+    animais  = listar_animais_por_lote(lote_id)
+
+    if not animais:
+        st.warning("Nenhum animal neste lote.")
+        st.stop()
+
+    st.info("💡 Defina o peso alvo em **Prontuário do Animal** para cada animal antes de usar esta tela.")
+
+    preco_kg = st.number_input("Preço do kg no abate (R$)", 0.0, 100.0, 20.0)
+
+    resultados = []
+    prontos_email = []
+
+    for a in animais:
+        prev = calcular_previsao_abate(a[0])
+        if "erro" not in prev:
+            resultados.append({
+                "Animal": a[1],
+                "Peso Atual (kg)": prev["peso_atual"],
+                "Peso Alvo (kg)": prev["peso_alvo"],
+                "GMD (kg/dia)": prev["gmd"],
+                "Dias Restantes": prev["dias_restantes"],
+                "Data Prevista": prev["data_prevista"],
+                "Receita Estimada (R$)": round(prev["peso_alvo"] * preco_kg, 2),
+                "Confiança": prev["confianca"],
+            })
+            if prev["dias_restantes"] <= 30:
+                prontos_email.append({
+                    "animal": a[1], "lote": lote_sel.split(" (ID")[0],
+                    "peso_atual": prev["peso_atual"], "peso_alvo": prev["peso_alvo"],
+                    "data_prevista": prev["data_prevista"],
+                })
+
+    if resultados:
+        df_prev = pd.DataFrame(resultados).sort_values("Dias Restantes")
+        st.dataframe(df_prev, use_container_width=True)
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("🐄 Animais analisados", len(resultados))
+        col2.metric("⏳ Prontos em ≤30 dias", len(prontos_email))
+        receita_total = sum(r["Receita Estimada (R$)"] for r in resultados)
+        col3.metric("💰 Receita total estimada", f"R$ {receita_total:,.2f}")
+
+        # Gráfico de barras: dias restantes por animal
+        df_chart = df_prev.set_index("Animal")[["Dias Restantes"]]
+        st.subheader("📊 Dias até o peso de abate por animal")
+        st.bar_chart(df_chart)
+
+        # Alertas
+        st.subheader("🚨 Alertas")
+        for r in resultados:
+            if r["Dias Restantes"] == 0:
+                st.success(f"✅ {r['Animal']}: já atingiu o peso alvo!")
+            elif r["Dias Restantes"] <= 15:
+                st.warning(f"🟡 {r['Animal']}: {r['Dias Restantes']} dias — prepare o abate")
+            elif r["Confiança"] == "baixa":
+                st.info(f"ℹ️ {r['Animal']}: previsão com baixa confiança (poucas pesagens)")
+
+        # Notificação por e-mail
+        if prontos_email and email_configurado():
+            if st.button("📧 Enviar alerta de abate por e-mail"):
+                ok, msg = email_abate_previsto(u["email"], u["nome"], prontos_email)
+                st.success(msg) if ok else st.warning(msg)
+    else:
+        st.info("Nenhum animal com peso alvo definido e pesagens suficientes.\n\nDefina o peso alvo em **Prontuário do Animal**.")
+
+# ===========================================================================
+# PRONTUÁRIO DO ANIMAL
+# ===========================================================================
+elif menu == "Prontuário do Animal":
+    st.title("📋 Prontuário do Animal")
+
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+        st.stop()
+
+    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+    lote_sel = st.selectbox("Lote", list(dict_l.keys()))
+    animais  = listar_animais_por_lote(dict_l[lote_sel])
+
+    if not animais:
+        st.warning("Nenhum animal neste lote.")
+        st.stop()
+
+    dict_a   = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+    anim_sel = st.selectbox("Animal", list(dict_a.keys()))
+    animal_id = dict_a[anim_sel]
+
+    det = obter_animal(animal_id)
+
+    tab1, tab2, tab3 = st.tabs(["📋 Dados", "⚖️ Pesagens", "🚨 Ocorrências"])
+
+    with tab1:
+        st.subheader("Informações do Animal")
+        with st.form("form_prontuario"):
+            col1, col2 = st.columns(2)
+            with col1:
+                peso_alvo = st.number_input("Peso alvo de abate (kg)",
+                                             0.0, 1000.0,
+                                             float(det[7]) if det else 0.0)
+                sexo = st.selectbox("Sexo", ["indefinido","macho","fêmea"],
+                                    index=["indefinido","macho","fêmea"].index(
+                                        det[4] if det and det[4] in ["indefinido","macho","fêmea"] else "indefinido"))
+                raca = st.text_input("Raça", value=det[5] if det else "")
+            with col2:
+                obs = st.text_area("Observações clínicas",
+                                   value=det[8] if det else "", height=120)
+
+            if st.form_submit_button("💾 Salvar Prontuário"):
+                atualizar_animal_detalhes(animal_id,
+                                          peso_alvo=peso_alvo,
+                                          observacoes=obs)
+                st.success("Prontuário atualizado!")
+                st.rerun()
+
+        # Previsão de abate inline
+        if det and det[7] > 0:
+            prev = calcular_previsao_abate(animal_id)
+            if "erro" not in prev:
+                st.divider()
+                st.subheader("🥩 Previsão de Abate")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("GMD atual", f"{prev['gmd']:.3f} kg/dia")
+                c2.metric("Dias restantes", prev["dias_restantes"])
+                c3.metric("Data prevista", prev["data_prevista"])
+                if prev["confianca"] == "baixa":
+                    st.caption("⚠️ Confiança baixa — registre mais pesagens para melhorar a previsão.")
+
+    with tab2:
+        pesagens = listar_pesagens(animal_id)
+        if pesagens:
+            df_p = pd.DataFrame(pesagens, columns=["ID","Animal","Peso","Data"])
+            df_p["Data"] = pd.to_datetime(df_p["Data"])
+            df_p = df_p.sort_values("Data")
+            st.line_chart(df_p.set_index("Data")["Peso"])
+            st.dataframe(df_p, use_container_width=True)
+        else:
+            st.info("Nenhuma pesagem registrada.")
+
+    with tab3:
+        ocs = listar_ocorrencias(animal_id)
+        if ocs:
+            df_oc = pd.DataFrame(ocs, columns=["ID","Animal ID","Data","Tipo",
+                                                "Descrição","Gravidade","Custo",
+                                                "Dias Rec.","Status"])
+            st.dataframe(df_oc, use_container_width=True)
+            custo_total = sum(o[6] for o in ocs if o[6])
+            st.metric("💊 Custo total de tratamentos", f"R$ {custo_total:.2f}")
+        else:
+            st.success("✅ Nenhuma ocorrência registrada.")
+
+        # Histórico reprodutivo
+        repros = listar_reproducao(animal_id)
+        if repros:
+            st.subheader("🐄 Histórico Reprodutivo")
+            df_r = pd.DataFrame(repros, columns=["ID","Animal","Cio","Tipo",
+                                                   "Diagnóstico","Resultado",
+                                                   "Parto Previsto","Parto Real","Obs"])
+            st.dataframe(df_r, use_container_width=True)
+
+# ===========================================================================
+# NOTIFICAÇÕES
+# ===========================================================================
+elif menu == "Notificações":
+    st.title("📧 Central de Notificações")
+
+    if not email_configurado():
+        st.warning("⚠️ E-mail não configurado.")
+        st.markdown("""
+        Para ativar as notificações, crie o arquivo `.streamlit/secrets.toml` com:
+        ```toml
+        [email]
+        smtp_host     = "smtp.gmail.com"
+        smtp_port     = 587
+        smtp_user     = "seu@gmail.com"
+        smtp_password = "senha_app_google"
+        remetente     = "Gestão Pecuária <seu@gmail.com>"
+        ```
+        Para Gmail, use uma **Senha de App** (não a senha da conta).
+        [Como criar →](https://support.google.com/accounts/answer/185833)
+        """)
+        st.stop()
+
+    st.success("✅ E-mail configurado e pronto para envio.")
+
+    st.subheader("📤 Enviar alertas agora")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Vacinas pendentes
+        pendentes = listar_vacinas_pendentes()
+        st.metric("💉 Vacinas pendentes", len(pendentes))
+        if pendentes and st.button("Enviar alerta de vacinas"):
+            vacs = [{"lote": v[2], "vacina": v[3], "data_prevista": v[4]}
+                    for v in pendentes]
+            ok, msg = email_vacina_pendente(u["email"], u["nome"], vacs)
+            st.success(msg) if ok else st.error(msg)
+
+        # Partos previstos
+        partos = listar_partos_previstos()
+        st.metric("🐄 Partos previstos (30d)", len(partos))
+        if partos and st.button("Enviar alerta de partos"):
+            pts = [{"animal": p[1], "lote": p[2], "data_parto_previsto": p[3]}
+                   for p in partos]
+            ok, msg = email_parto_previsto(u["email"], u["nome"], pts)
+            st.success(msg) if ok else st.error(msg)
+
+    with col2:
+        # Medicamentos críticos
+        criticos = listar_medicamentos_criticos()
+        st.metric("💊 Medicamentos em alerta", len(criticos))
+        if criticos and st.button("Enviar alerta de medicamentos"):
+            meds = [{"nome": m[1], "estoque_atual": m[3],
+                     "unidade": m[2], "validade": m[5] or ""}
+                    for m in criticos]
+            ok, msg = email_medicamento_critico(u["email"], u["nome"], meds)
+            st.success(msg) if ok else st.error(msg)
+
+        # Trial expirando (só admin)
+        if u["perfil"] == "admin":
+            expirando = listar_usuarios_trial_expirando(dias=7)
+            st.metric("⏳ Trials expirando (7d)", len(expirando))
+            if expirando and st.button("Enviar avisos de trial"):
+                enviados = 0
+                for usr in expirando:
+                    from datetime import date as _dtoday
+                    dias = (_dtoday.fromisoformat(usr[3]) - _dtoday.today()).days if usr[3] else 0
+                    ok, _ = email_trial_expirando(usr[2], usr[1], dias)
+                    if ok: enviados += 1
+                st.success(f"Avisos enviados: {enviados}/{len(expirando)}")
+
+    st.divider()
+
+    # Administração do plano (só admin)
+    if u["perfil"] == "admin":
+        st.subheader("⚙️ Gestão de Planos")
+        usuarios = listar_usuarios()
+        if usuarios:
+            df_u = pd.DataFrame(usuarios, columns=["ID","Nome","E-mail","Perfil","Fazenda"])
+            st.dataframe(df_u, use_container_width=True)
+
+            with st.form("form_converter"):
+                uid_conv = st.number_input("ID do usuário para converter para PAGO", 1, step=1)
+                if st.form_submit_button("Converter para plano pago"):
+                    converter_para_pago(int(uid_conv))
+                    st.success(f"Usuário {uid_conv} convertido para plano pago!")
+                    st.rerun()
