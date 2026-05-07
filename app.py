@@ -2137,15 +2137,18 @@ elif menu == "Mortalidade":
             st.warning("Cadastre um lote primeiro.")
         else:
             dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            with st.form("form_morte"):
-                lote_sel = st.selectbox("Lote", list(dict_l.keys()))
-                animais = listar_animais_por_lote(dict_l[lote_sel])
-                ativos  = [a for a in animais]
-                if not ativos:
-                    st.warning("Nenhum animal neste lote.")
-                else:
-                    dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in ativos}
-                    anim_sel   = st.selectbox("Animal", list(dict_a.keys()))
+            # selectbox FORA do form para atualizar lista de animais dinamicamente
+            lote_sel_m = st.selectbox("Lote", list(dict_l.keys()),
+                                       key="morte_lote_sel")
+            lote_id_m  = dict_l[lote_sel_m]
+            animais_m  = listar_animais_por_lote(lote_id_m)
+
+            if not animais_m:
+                st.warning("Nenhum animal neste lote.")
+            else:
+                dict_a_m = {f"{a[1]} (ID {a[0]})": a[0] for a in animais_m}
+                with st.form("form_morte"):
+                    anim_sel   = st.selectbox("Animal", list(dict_a_m.keys()))
                     data_morte = st.date_input("Data")
                     causa      = st.selectbox("Causa",
                                   ["Doença","Acidente","Desaparecimento",
@@ -2153,10 +2156,10 @@ elif menu == "Mortalidade":
                     desc_m     = st.text_area("Descrição")
                     custo_p    = st.number_input("Custo da perda (R$)", 0.0)
                     if st.form_submit_button("Registrar Morte"):
-                        registrar_morte(dict_a[anim_sel], str(data_morte),
+                        registrar_morte(dict_a_m[anim_sel], str(data_morte),
                                         causa, desc_m, custo_p)
                         registrar_auditoria(u["id"], "morte_animal",
-                                            "animais", dict_a[anim_sel],
+                                            "animais", dict_a_m[anim_sel],
                                             f"{anim_sel} — {causa}")
                         st.success("Morte registrada e animal baixado do lote.")
                         st.rerun()
@@ -2168,14 +2171,54 @@ elif menu == "Importar Dados":
     st.title("📥 Importação em Lote")
 
     lotes = listar_lotes()
-    if not lotes:
-        st.warning("Cadastre um lote primeiro.")
+
+    # --- Seleção ou criação de lote ---
+    st.subheader("📦 Lote de destino")
+    opcao_lote = st.radio("O que deseja fazer?",
+                          ["Usar lote existente", "Criar novo lote agora"],
+                          horizontal=True, key="import_opcao_lote")
+
+    lote_id = None
+
+    if opcao_lote == "Criar novo lote agora":
+        with st.form("form_novo_lote_import"):
+            col1, col2 = st.columns(2)
+            with col1:
+                nome_nl    = st.text_input("Nome do lote *")
+                qtd_comp   = st.number_input("Qtd comprada", 0, step=1)
+                qtd_rec    = st.number_input("Qtd recebida", 0, step=1)
+            with col2:
+                data_nl    = st.date_input("Data de entrada")
+                transp_nl  = st.text_input("Transportadora")
+                desc_nl    = st.text_area("Descrição")
+            if st.form_submit_button("✅ Criar lote e continuar"):
+                if nome_nl:
+                    lote_id = adicionar_lote(nome_nl, desc_nl, str(data_nl),
+                                             qtd_comp, qtd_rec, transp_nl)
+                    registrar_auditoria(u["id"], "criar_lote", "lotes",
+                                        lote_id, nome_nl)
+                    st.success(f"Lote '{nome_nl}' criado! Agora faça o upload do CSV abaixo.")
+                    st.rerun()
+                else:
+                    st.error("Informe o nome do lote.")
+        # Após criar, pega o lote mais recente
+        lotes = listar_lotes()
+        if lotes:
+            lote_id = lotes[0][0]
+            st.info(f"Lote selecionado: **{lotes[0][1]}**")
+    else:
+        if not lotes:
+            st.warning("Nenhum lote cadastrado. Selecione 'Criar novo lote agora'.")
+            st.stop()
+        dict_l   = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()),
+                                 key="import_lote_sel")
+        lote_id  = dict_l[lote_sel]
+
+    if not lote_id:
         st.stop()
 
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    lote_sel = st.selectbox("Lote destino", list(dict_l.keys()))
-    lote_id  = dict_l[lote_sel]
-
+    st.divider()
     tab1, tab2 = st.tabs(["⚖️ Importar Pesagens", "🐄 Importar Animais"])
 
     with tab1:
@@ -2596,23 +2639,39 @@ elif menu == "Backup do Sistema":
     with col1:
         st.subheader("📦 Download ZIP (CSVs)")
         st.write("Exporta todas as tabelas em formato CSV dentro de um arquivo ZIP.")
-        if st.button("Gerar backup ZIP"):
-            with st.spinner("Gerando backup..."):
-                dados = gerar_backup_zip(db_path)
-            nome = nome_arquivo_backup("zip")
-            st.download_button("⬇️ Baixar ZIP", dados, nome, "application/zip")
-            registrar_auditoria(u["id"], "backup_zip", "sistema", None, nome)
+        # Gera o backup direto — sem step intermediário de button
+        if not _BACKUP_OK:
+            st.error("backup.py não encontrado no repositório.")
+        else:
+            with st.spinner("Preparando backup ZIP..."):
+                dados_zip = gerar_backup_zip(db_path)
+            nome_zip = nome_arquivo_backup("zip")
+            st.download_button(
+                "⬇️ Baixar Backup ZIP",
+                dados_zip,
+                nome_zip,
+                "application/zip",
+                key="dl_zip",
+            )
+            registrar_auditoria(u["id"], "backup_zip", "sistema", None, nome_zip)
 
     with col2:
         st.subheader("🗄️ Download SQLite")
         st.write("Cópia fiel do banco — pode ser restaurada diretamente.")
-        if st.button("Gerar backup .db"):
-            with st.spinner("Copiando banco..."):
-                dados2 = gerar_backup_sqlite(db_path)
-            nome2 = nome_arquivo_backup("db")
-            st.download_button("⬇️ Baixar .db", dados2, nome2,
-                               "application/octet-stream")
-            registrar_auditoria(u["id"], "backup_sqlite", "sistema", None, nome2)
+        if not _BACKUP_OK:
+            st.error("backup.py não encontrado no repositório.")
+        else:
+            with st.spinner("Preparando backup SQLite..."):
+                dados_db = gerar_backup_sqlite(db_path)
+            nome_db = nome_arquivo_backup("db")
+            st.download_button(
+                "⬇️ Baixar Backup SQLite",
+                dados_db,
+                nome_db,
+                "application/octet-stream",
+                key="dl_db",
+            )
+            registrar_auditoria(u["id"], "backup_sqlite", "sistema", None, nome_db)
 
     st.divider()
     st.subheader("📧 Enviar backup por e-mail")
