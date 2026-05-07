@@ -1,4 +1,3 @@
-
 """
 Sistema de Gestão Pecuária — app principal.
 Execute com:  streamlit run app.py
@@ -36,15 +35,50 @@ from database import (
     # prontuário / abate
     atualizar_animal_detalhes, obter_animal, calcular_previsao_abate,
 )
-from exports import gerar_excel_lote, gerar_excel_sanitario, gerar_pdf_relatorio
-from notifications import (
-    email_boas_vindas, email_trial_expirando, email_trial_expirado,
-    email_vacina_pendente, email_medicamento_critico,
-    email_parto_previsto, email_abate_previsto, email_configurado,
-    _enviar, _template,
-)
-from cepea import cotacao_com_cache, historico_grafico
-from backup import gerar_backup_zip, gerar_backup_sqlite, nome_arquivo_backup
+try:
+    from exports import gerar_excel_lote, gerar_excel_sanitario, gerar_pdf_relatorio
+    _EXPORTS_OK = True
+except ImportError:
+    _EXPORTS_OK = False
+    def gerar_excel_lote(*a, **k): return b""
+    def gerar_excel_sanitario(*a, **k): return b""
+    def gerar_pdf_relatorio(*a, **k): return b"" 
+try:
+    from notifications import (
+        email_boas_vindas, email_trial_expirando, email_trial_expirado,
+        email_vacina_pendente, email_medicamento_critico,
+        email_parto_previsto, email_abate_previsto, email_configurado,
+        _enviar, _template,
+    )
+    _NOTIF_OK = True
+except ImportError:
+    _NOTIF_OK = False
+    def email_boas_vindas(*a, **k): return (False, "notifications.py não encontrado")
+    def email_trial_expirando(*a, **k): return (False, "")
+    def email_trial_expirado(*a, **k): return (False, "")
+    def email_vacina_pendente(*a, **k): return (False, "")
+    def email_medicamento_critico(*a, **k): return (False, "")
+    def email_parto_previsto(*a, **k): return (False, "")
+    def email_abate_previsto(*a, **k): return (False, "")
+    def email_configurado(): return False
+    def _enviar(*a, **k): return (False, "")
+    def _template(*a, **k): return "" 
+try:
+    from cepea import cotacao_com_cache, historico_grafico
+    _CEPEA_OK = True
+except ImportError:
+    _CEPEA_OK = False
+    def cotacao_com_cache(_db): return dict(preco=0.0, data="", fonte="", sucesso=False, msg="módulo cepea.py não encontrado")
+    def historico_grafico(c): return dict(datas=[], precos=[])
+
+try:
+    from backup import gerar_backup_zip, gerar_backup_sqlite, nome_arquivo_backup
+    _BACKUP_OK = True
+except ImportError:
+    _BACKUP_OK = False
+    def gerar_backup_zip(p): return b""
+    def gerar_backup_sqlite(p): return b""
+    def nome_arquivo_backup(ext="zip"): return f"backup.{ext}" 
 from database import (
     registrar_morte, listar_mortalidade, taxa_mortalidade_lote,
     registrar_auditoria, listar_auditoria,
