@@ -177,6 +177,75 @@ def inicializar_banco() -> None:
             CREATE INDEX IF NOT EXISTS idx_vacinas_lote      ON vacinas_agenda(lote_id);
             CREATE INDEX IF NOT EXISTS idx_reproducao_animal ON reproducao(animal_id);
             CREATE INDEX IF NOT EXISTS idx_med_uso_animal    ON medicamentos_uso(animal_id);
+
+            -- ----------------------------------------------------------------
+            -- NOVAS TABELAS — ETAPA A/B
+            -- ----------------------------------------------------------------
+            CREATE TABLE IF NOT EXISTS mortalidade (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                animal_id   INTEGER NOT NULL,
+                data        TEXT NOT NULL,
+                causa       TEXT NOT NULL DEFAULT 'Doença',
+                descricao   TEXT DEFAULT '',
+                custo_perda REAL DEFAULT 0.0,
+                FOREIGN KEY (animal_id) REFERENCES animais(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS auditoria (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id  INTEGER NOT NULL,
+                acao        TEXT NOT NULL,
+                tabela      TEXT DEFAULT '',
+                registro_id INTEGER DEFAULT NULL,
+                detalhe     TEXT DEFAULT '',
+                data_hora   TEXT NOT NULL,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS gta (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                lote_id       INTEGER NOT NULL,
+                numero_gta    TEXT NOT NULL,
+                data_emissao  TEXT NOT NULL,
+                origem        TEXT DEFAULT '',
+                destino       TEXT DEFAULT '',
+                quantidade    INTEGER DEFAULT 0,
+                finalidade    TEXT DEFAULT 'Abate',
+                observacao    TEXT DEFAULT '',
+                FOREIGN KEY (lote_id) REFERENCES lotes(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS sisbov (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                animal_id          INTEGER NOT NULL UNIQUE,
+                numero_sisbov      TEXT NOT NULL,
+                data_certificacao  TEXT NOT NULL,
+                FOREIGN KEY (animal_id) REFERENCES animais(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS vendas_lote (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                lote_id        INTEGER NOT NULL,
+                data_venda     TEXT NOT NULL,
+                preco_venda_kg REAL NOT NULL DEFAULT 0,
+                peso_total_kg  REAL NOT NULL DEFAULT 0,
+                frigorific     TEXT DEFAULT '',
+                observacao     TEXT DEFAULT '',
+                FOREIGN KEY (lote_id) REFERENCES lotes(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS cotacoes (
+                id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                data   TEXT NOT NULL UNIQUE,
+                preco  REAL NOT NULL,
+                fonte  TEXT DEFAULT 'manual'
+            );
+
+            -- índices novos
+            CREATE INDEX IF NOT EXISTS idx_mortalidade_animal ON mortalidade(animal_id);
+            CREATE INDEX IF NOT EXISTS idx_auditoria_usuario  ON auditoria(usuario_id);
+            CREATE INDEX IF NOT EXISTS idx_gta_lote           ON gta(lote_id);
+            CREATE INDEX IF NOT EXISTS idx_cotacoes_data      ON cotacoes(data);
         """)
     _migrar()
 
@@ -197,6 +266,9 @@ def _migrar():
         ("animais",  "foto_path TEXT DEFAULT NULL"),
         ("animais",  "observacoes TEXT DEFAULT ''"),
         ("animais",  "peso_alvo REAL DEFAULT 0"),
+        ("animais",  "ativo INTEGER DEFAULT 1"),
+        ("medicamentos", "carencia_dias INTEGER DEFAULT 0"),
+        ("lotes",   "data_venda TEXT DEFAULT NULL"),
     ]
     with _conexao() as conn:
         for tabela, coluna_def in novas_colunas:
@@ -854,3 +926,526 @@ def calcular_previsao_abate(animal_id: int) -> dict:
         data_prevista=str(data_prev),
         confianca=confianca,
     )
+
+
+# ===========================================================================
+# MORTALIDADE
+# ===========================================================================
+
+def registrar_morte(animal_id: int, data: str, causa: str,
+                    descricao: str = "", custo_perda: float = 0.0) -> int:
+    """Baixa o animal e registra a causa da morte."""
+    with _conexao() as conn:
+        # marca animal como inativo
+        conn.execute(
+            "UPDATE animais SET ativo=0 WHERE id=?", (animal_id,)
+        )
+        cur = conn.execute(
+            """INSERT INTO mortalidade
+               (animal_id, data, causa, descricao, custo_perda)
+               VALUES (?,?,?,?,?)""",
+            (animal_id, data, causa, descricao, custo_perda),
+        )
+        return cur.lastrowid
+
+
+def listar_mortalidade(lote_id: int = None) -> list:
+    """
+    Tupla: (id, animal_id, identificacao, data, causa, descricao, custo_perda)
+    """
+    with _conexao() as conn:
+        if lote_id:
+            rows = conn.execute(
+                """SELECT m.id, m.animal_id, a.identificacao,
+                          m.data, m.causa, m.descricao, m.custo_perda
+                   FROM mortalidade m
+                   JOIN animais a ON a.id = m.animal_id
+                   WHERE a.lote_id = ?
+                   ORDER BY m.data DESC""",
+                (lote_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT m.id, m.animal_id, a.identificacao,
+                          m.data, m.causa, m.descricao, m.custo_perda
+                   FROM mortalidade m
+                   JOIN animais a ON a.id = m.animal_id
+                   ORDER BY m.data DESC"""
+            ).fetchall()
+        return [tuple(r) for r in rows]
+
+
+def taxa_mortalidade_lote(lote_id: int) -> dict:
+    with _conexao() as conn:
+        total = conn.execute(
+            "SELECT COUNT(*) FROM animais WHERE lote_id=?", (lote_id,)
+        ).fetchone()[0]
+        mortos = conn.execute(
+            """SELECT COUNT(*) FROM mortalidade m
+               JOIN animais a ON a.id=m.animal_id
+               WHERE a.lote_id=?""",
+            (lote_id,),
+        ).fetchone()[0]
+    taxa = (mortos / total * 100) if total > 0 else 0
+    return dict(total=total, mortos=mortos, taxa=round(taxa, 2))
+
+
+# ===========================================================================
+# LOG DE AUDITORIA
+# ===========================================================================
+
+def registrar_auditoria(usuario_id: int, acao: str,
+                         tabela: str = "", registro_id: int = None,
+                         detalhe: str = ""):
+    """Registra qualquer ação relevante do usuário."""
+    with _conexao() as conn:
+        conn.execute(
+            """INSERT INTO auditoria
+               (usuario_id, acao, tabela, registro_id, detalhe, data_hora)
+               VALUES (?,?,?,?,?, datetime('now','localtime'))""",
+            (usuario_id, acao, tabela, registro_id, detalhe),
+        )
+
+
+def listar_auditoria(limite: int = 100, usuario_id: int = None) -> list:
+    """
+    Tupla: (id, usuario_nome, acao, tabela, registro_id, detalhe, data_hora)
+    """
+    with _conexao() as conn:
+        if usuario_id:
+            rows = conn.execute(
+                """SELECT a.id, u.nome, a.acao, a.tabela,
+                          a.registro_id, a.detalhe, a.data_hora
+                   FROM auditoria a
+                   JOIN usuarios u ON u.id=a.usuario_id
+                   WHERE a.usuario_id=?
+                   ORDER BY a.id DESC LIMIT ?""",
+                (usuario_id, limite),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT a.id, u.nome, a.acao, a.tabela,
+                          a.registro_id, a.detalhe, a.data_hora
+                   FROM auditoria a
+                   JOIN usuarios u ON u.id=a.usuario_id
+                   ORDER BY a.id DESC LIMIT ?""",
+                (limite,),
+            ).fetchall()
+        return [tuple(r) for r in rows]
+
+
+# ===========================================================================
+# RASTREABILIDADE GTA / SISBOV
+# ===========================================================================
+
+def registrar_gta(lote_id: int, numero_gta: str, data_emissao: str,
+                   origem: str, destino: str, quantidade: int,
+                   finalidade: str = "Abate",
+                   observacao: str = "") -> int:
+    """Registra uma Guia de Trânsito Animal."""
+    with _conexao() as conn:
+        cur = conn.execute(
+            """INSERT INTO gta
+               (lote_id, numero_gta, data_emissao, origem, destino,
+                quantidade, finalidade, observacao)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (lote_id, numero_gta, data_emissao, origem, destino,
+             quantidade, finalidade, observacao),
+        )
+        return cur.lastrowid
+
+
+def listar_gta(lote_id: int = None) -> list:
+    """
+    Tupla: (id, lote_id, nome_lote, numero_gta, data_emissao,
+            origem, destino, quantidade, finalidade, observacao)
+    """
+    with _conexao() as conn:
+        if lote_id:
+            rows = conn.execute(
+                """SELECT g.id, g.lote_id, l.nome, g.numero_gta,
+                          g.data_emissao, g.origem, g.destino,
+                          g.quantidade, g.finalidade, g.observacao
+                   FROM gta g JOIN lotes l ON l.id=g.lote_id
+                   WHERE g.lote_id=? ORDER BY g.data_emissao DESC""",
+                (lote_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT g.id, g.lote_id, l.nome, g.numero_gta,
+                          g.data_emissao, g.origem, g.destino,
+                          g.quantidade, g.finalidade, g.observacao
+                   FROM gta g JOIN lotes l ON l.id=g.lote_id
+                   ORDER BY g.data_emissao DESC"""
+            ).fetchall()
+        return [tuple(r) for r in rows]
+
+
+def registrar_sisbov(animal_id: int, numero_sisbov: str,
+                      data_certificacao: str) -> int:
+    with _conexao() as conn:
+        cur = conn.execute(
+            """INSERT INTO sisbov (animal_id, numero_sisbov, data_certificacao)
+               VALUES (?,?,?)""",
+            (animal_id, numero_sisbov, data_certificacao),
+        )
+        return cur.lastrowid
+
+
+def obter_sisbov(animal_id: int) -> tuple | None:
+    with _conexao() as conn:
+        row = conn.execute(
+            "SELECT id, animal_id, numero_sisbov, data_certificacao FROM sisbov WHERE animal_id=?",
+            (animal_id,),
+        ).fetchone()
+        return tuple(row) if row else None
+
+
+# ===========================================================================
+# CARÊNCIA DE MEDICAMENTOS
+# ===========================================================================
+
+def verificar_carencia(animal_id: int) -> dict:
+    """
+    Verifica se o animal está em período de carência de algum medicamento.
+    Retorna dict com: em_carencia (bool), medicamentos (list de dicts),
+                      liberado_em (str | None)
+    """
+    from datetime import date as dt
+    with _conexao() as conn:
+        rows = conn.execute(
+            """SELECT mu.data_uso, m.nome, m.carencia_dias,
+                      date(mu.data_uso, '+' || m.carencia_dias || ' days') as libera_em
+               FROM medicamentos_uso mu
+               JOIN medicamentos m ON m.id = mu.medicamento_id
+               WHERE mu.animal_id = ?
+                 AND m.carencia_dias > 0
+                 AND date(mu.data_uso, '+' || m.carencia_dias || ' days') >= date('now')
+               ORDER BY libera_em DESC""",
+            (animal_id,),
+        ).fetchall()
+
+    if not rows:
+        return dict(em_carencia=False, medicamentos=[], liberado_em=None)
+
+    meds = [dict(medicamento=r[1], uso=r[0],
+                 carencia_dias=r[2], libera_em=r[3]) for r in rows]
+    liberado_em = max(r["libera_em"] for r in meds)
+    return dict(em_carencia=True, medicamentos=meds, liberado_em=liberado_em)
+
+
+# ===========================================================================
+# SCORE DE SAÚDE POR ANIMAL (0–100)
+# ===========================================================================
+
+def calcular_score_saude(animal_id: int) -> dict:
+    """
+    Score 0–100 combinando GMD, ocorrências e reprodução.
+    Retorna dict: score, classificacao, detalhes
+    """
+    import pandas as pd
+
+    # --- GMD (peso 50%) ---
+    pesagens = listar_pesagens(animal_id)
+    gmd = 0.0
+    if len(pesagens) >= 2:
+        df = pd.DataFrame(pesagens, columns=["id","aid","peso","data"])
+        df["data"] = pd.to_datetime(df["data"])
+        df = df.sort_values("data")
+        dias = (df["data"].iloc[-1] - df["data"].iloc[0]).days
+        if dias > 0:
+            gmd = (df["peso"].iloc[-1] - df["peso"].iloc[0]) / dias
+
+    if gmd >= 1.2:      pts_gmd = 50
+    elif gmd >= 1.0:    pts_gmd = 45
+    elif gmd >= 0.8:    pts_gmd = 38
+    elif gmd >= 0.6:    pts_gmd = 30
+    elif gmd >= 0.4:    pts_gmd = 20
+    elif gmd >= 0.0:    pts_gmd = 10
+    else:               pts_gmd = 0  # perda de peso
+
+    # --- Ocorrências (peso 35%) ---
+    ocs = listar_ocorrencias(animal_id)
+    n_altas  = sum(1 for o in ocs if o[5] == "Alta")
+    n_medias = sum(1 for o in ocs if o[5] == "Média")
+    n_baixas = sum(1 for o in ocs if o[5] == "Baixa")
+    penalidade_oc = min(35, n_altas * 15 + n_medias * 7 + n_baixas * 3)
+    pts_oc = max(0, 35 - penalidade_oc)
+
+    # --- Reprodução (peso 15%) ---
+    repros = listar_reproducao(animal_id)
+    pts_rep = 15
+    if repros:
+        ultimo = repros[0]
+        if ultimo[5] == "negativo":   pts_rep = 5
+        elif ultimo[5] == "pendente": pts_rep = 10
+        # positivo = 15 (máximo)
+
+    score = pts_gmd + pts_oc + pts_rep
+
+    if score >= 80:   classif = "Excelente"
+    elif score >= 60: classif = "Bom"
+    elif score >= 40: classif = "Regular"
+    else:             classif = "Crítico"
+
+    return dict(
+        score=score,
+        classificacao=classif,
+        detalhes=dict(pts_gmd=pts_gmd, pts_ocorrencias=pts_oc,
+                      pts_reproducao=pts_rep, gmd=round(gmd, 3),
+                      n_ocorrencias=len(ocs)),
+    )
+
+
+# ===========================================================================
+# MARGEM REAL POR LOTE (COMPRA × VENDA)
+# ===========================================================================
+
+def registrar_venda_lote(lote_id: int, data_venda: str,
+                          preco_venda_kg: float, peso_total_kg: float,
+                          frigorific: str = "", observacao: str = "") -> int:
+    with _conexao() as conn:
+        cur = conn.execute(
+            """INSERT INTO vendas_lote
+               (lote_id, data_venda, preco_venda_kg, peso_total_kg,
+                frigorific, observacao)
+               VALUES (?,?,?,?,?,?)""",
+            (lote_id, data_venda, preco_venda_kg, peso_total_kg,
+             frigorific, observacao),
+        )
+        return cur.lastrowid
+
+
+def calcular_margem_lote(lote_id: int) -> dict:
+    """
+    Calcula margem real: receita real - custo de compra - custos operacionais.
+    Retorna dict com todos os componentes financeiros.
+    """
+    with _conexao() as conn:
+        lote = obter_lote(lote_id)
+        if not lote:
+            return {}
+
+        # custo de compra
+        preco_animal = conn.execute(
+            "SELECT COALESCE(preco_por_animal,0) FROM lotes WHERE id=?",
+            (lote_id,),
+        ).fetchone()[0]
+        qtd = lote[5]  # qtd_recebida
+        custo_compra = preco_animal * qtd
+
+        # receita real de venda
+        venda = conn.execute(
+            """SELECT preco_venda_kg, peso_total_kg, data_venda, frigorific
+               FROM vendas_lote WHERE lote_id=? ORDER BY id DESC LIMIT 1""",
+            (lote_id,),
+        ).fetchone()
+
+        receita_real = 0.0
+        data_venda = None
+        frigorific = ""
+        if venda:
+            receita_real = venda[0] * venda[1]
+            data_venda   = venda[2]
+            frigorific   = venda[3]
+
+        # custo sanitário
+        animais = listar_animais_por_lote(lote_id)
+        custo_san = sum(
+            o[6] for a in animais
+            for o in listar_ocorrencias(a[0])
+            if o[6]
+        )
+
+        margem = receita_real - custo_compra - custo_san
+        margem_pct = (margem / custo_compra * 100) if custo_compra > 0 else 0
+
+    return dict(
+        custo_compra=round(custo_compra, 2),
+        receita_real=round(receita_real, 2),
+        custo_sanitario=round(custo_san, 2),
+        margem=round(margem, 2),
+        margem_pct=round(margem_pct, 1),
+        data_venda=data_venda,
+        frigorific=frigorific,
+        venda_registrada=venda is not None,
+    )
+
+
+def listar_vendas_lote(lote_id: int) -> list:
+    with _conexao() as conn:
+        rows = conn.execute(
+            """SELECT id, lote_id, data_venda, preco_venda_kg,
+                      peso_total_kg, frigorific, observacao
+               FROM vendas_lote WHERE lote_id=? ORDER BY data_venda DESC""",
+            (lote_id,),
+        ).fetchall()
+        return [tuple(r) for r in rows]
+
+
+# ===========================================================================
+# COTAÇÃO CEPEA (cache no banco para não bater todo load)
+# ===========================================================================
+
+def salvar_cotacao(data: str, preco: float, fonte: str = "manual") -> int:
+    with _conexao() as conn:
+        # upsert por data
+        cur = conn.execute(
+            """INSERT INTO cotacoes (data, preco, fonte)
+               VALUES (?,?,?)
+               ON CONFLICT(data) DO UPDATE SET preco=excluded.preco, fonte=excluded.fonte""",
+            (data, preco, fonte),
+        )
+        return cur.lastrowid
+
+
+def listar_cotacoes(dias: int = 30) -> list:
+    """Tupla: (id, data, preco, fonte) — últimos N dias."""
+    with _conexao() as conn:
+        if dias <= 0:
+            rows = conn.execute(
+                "SELECT id, data, preco, fonte FROM cotacoes ORDER BY data ASC"
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT id, data, preco, fonte FROM cotacoes
+                   WHERE data >= date('now', ? || ' days')
+                   ORDER BY data ASC""",
+                (f"-{dias}",),
+            ).fetchall()
+        return [tuple(r) for r in rows]
+
+
+def obter_ultima_cotacao() -> tuple | None:
+    with _conexao() as conn:
+        row = conn.execute(
+            "SELECT id, data, preco, fonte FROM cotacoes ORDER BY data DESC LIMIT 1"
+        ).fetchone()
+        return tuple(row) if row else None
+
+
+# ===========================================================================
+# GMD TEMPORAL (EVOLUÇÃO SEMANAL)
+# ===========================================================================
+
+def calcular_gmd_temporal(lote_id: int, janela_dias: int = 14) -> list:
+    """
+    Retorna lista de (data, gmd_medio) calculado em janelas de `janela_dias`.
+    Permite plotar a evolução do GMD ao longo do tempo.
+    """
+    import pandas as pd
+    from datetime import timedelta as td
+
+    animais = listar_animais_por_lote(lote_id)
+    todos_pesos = []
+    for a in animais:
+        ps = listar_pesagens(a[0])
+        for p in ps:
+            todos_pesos.append({"animal_id": a[0], "peso": p[2], "data": p[3]})
+
+    if len(todos_pesos) < 2:
+        return []
+
+    df = pd.DataFrame(todos_pesos)
+    df["data"] = pd.to_datetime(df["data"])
+    df = df.sort_values("data")
+
+    data_min = df["data"].min()
+    data_max = df["data"].max()
+    resultado = []
+
+    data_atual = data_min + pd.Timedelta(days=janela_dias)
+    while data_atual <= data_max:
+        janela = df[df["data"] <= data_atual]
+        gmds = []
+        for aid in janela["animal_id"].unique():
+            sub = janela[janela["animal_id"] == aid].sort_values("data")
+            if len(sub) >= 2:
+                dias = (sub["data"].iloc[-1] - sub["data"].iloc[0]).days
+                if dias > 0:
+                    g = (sub["peso"].iloc[-1] - sub["peso"].iloc[0]) / dias
+                    if 0 < g <= 2:
+                        gmds.append(g)
+        if gmds:
+            resultado.append((str(data_atual.date()), round(sum(gmds)/len(gmds), 4)))
+        data_atual += pd.Timedelta(days=janela_dias)
+
+    return resultado
+
+
+# ===========================================================================
+# IMPORTAÇÃO EM LOTE (CSV)
+# ===========================================================================
+
+def importar_pesagens_csv(linhas: list, lote_id: int) -> dict:
+    """
+    Importa pesagens de uma lista de dicts com chaves:
+      identificacao, peso, data
+    Cria o animal se não existir. Retorna dict com contadores.
+    """
+    ok = erros = criados = 0
+    msgs = []
+
+    animais_existentes = {a[1]: a[0] for a in listar_animais_por_lote(lote_id)}
+
+    for i, linha in enumerate(linhas, start=1):
+        try:
+            ident = str(linha.get("identificacao", "")).strip()
+            peso  = float(str(linha.get("peso", "0")).replace(",", "."))
+            data  = str(linha.get("data", "")).strip()
+
+            if not ident or not data or peso <= 0:
+                erros += 1
+                msgs.append(f"Linha {i}: dados inválidos ({ident}, {peso}, {data})")
+                continue
+
+            if ident not in animais_existentes:
+                aid = adicionar_animal(ident, 0, lote_id)
+                animais_existentes[ident] = aid
+                criados += 1
+
+            adicionar_pesagem(animais_existentes[ident], peso, data)
+            ok += 1
+        except Exception as e:
+            erros += 1
+            msgs.append(f"Linha {i}: {e}")
+
+    return dict(importados=ok, erros=erros, animais_criados=criados, mensagens=msgs)
+
+
+def importar_animais_csv(linhas: list, lote_id: int) -> dict:
+    """
+    Importa animais de lista de dicts com chaves:
+      identificacao, idade (opcional), raca (opcional), sexo (opcional),
+      peso_entrada (opcional), peso_alvo (opcional)
+    """
+    ok = erros = 0
+    msgs = []
+    existentes = {a[1] for a in listar_animais_por_lote(lote_id)}
+
+    for i, linha in enumerate(linhas, start=1):
+        try:
+            ident = str(linha.get("identificacao", "")).strip()
+            if not ident:
+                erros += 1; msgs.append(f"Linha {i}: identificação vazia"); continue
+            if ident in existentes:
+                erros += 1; msgs.append(f"Linha {i}: {ident} já existe"); continue
+
+            idade = int(float(str(linha.get("idade", 0)).replace(",", ".") or 0))
+            aid = adicionar_animal(ident, idade, lote_id)
+
+            pe = float(str(linha.get("peso_entrada", 0)).replace(",", ".") or 0)
+            pa = float(str(linha.get("peso_alvo", 0)).replace(",", ".") or 0)
+            ob = str(linha.get("observacoes", ""))
+            fp = str(linha.get("foto_path", ""))
+
+            atualizar_animal_detalhes(aid,
+                peso_alvo=pa if pa > 0 else None,
+                observacoes=ob if ob else None,
+                foto_path=fp if fp else None)
+            existentes.add(ident)
+            ok += 1
+        except Exception as e:
+            erros += 1; msgs.append(f"Linha {i}: {e}")
+
+    return dict(importados=ok, erros=erros, mensagens=msgs)
