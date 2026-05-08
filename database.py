@@ -1,4 +1,4 @@
-“””
+‘’’
 database.py – Camada de persistência do Sistema de Gestão Pecuária.
 
 Índices de retorno (tuplas):
@@ -16,7 +16,7 @@ estoque_minimo[4], validade[5], custo_unitario[6])
 reproducao  → (id[0], animal_id[1], data_cio[2], tipo_cobertura[3],
 data_diagnostico[4], resultado[5], data_parto_previsto[6],
 data_parto_real[7], observacao[8])
-“””
+‘’’
 
 import sqlite3
 import os
@@ -43,9 +43,9 @@ finally:
 conn.close()
 
 def inicializar_banco() -> None:
-“”“Cria tabelas e executa migrações. Seguro chamar múltiplas vezes.”””
+‘’‘Cria tabelas e executa migrações. Seguro chamar múltiplas vezes.’’’
 with _conexao() as conn:
-conn.executescript(”””
+conn.executescript(’’’
 CREATE TABLE IF NOT EXISTS lotes (
 id            INTEGER PRIMARY KEY AUTOINCREMENT,
 nome          TEXT    NOT NULL,
@@ -245,12 +245,12 @@ transporte    TEXT    DEFAULT ‘’
         CREATE INDEX IF NOT EXISTS idx_auditoria_usuario  ON auditoria(usuario_id);
         CREATE INDEX IF NOT EXISTS idx_gta_lote           ON gta(lote_id);
         CREATE INDEX IF NOT EXISTS idx_cotacoes_data      ON cotacoes(data);
-    """)
+    ''')
 _migrar()
 ```
 
 def _migrar():
-“”“Adiciona colunas novas sem perder dados existentes.”””
+‘’‘Adiciona colunas novas sem perder dados existentes.’’’
 novas_colunas = [
 (“animais”,  “sexo TEXT DEFAULT ‘indefinido’”),
 (“animais”,  “raca TEXT DEFAULT ‘’”),
@@ -285,8 +285,8 @@ pass
 def adicionar_lote(nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte):
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO lotes (nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte)
-VALUES (?, ?, ?, ?, ?, ?)”””,
+‘’‘INSERT INTO lotes (nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte)
+VALUES (?, ?, ?, ?, ?, ?)’’’,
 (nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte),
 )
 return cur.lastrowid
@@ -294,16 +294,16 @@ return cur.lastrowid
 def listar_lotes():
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT id, nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte
-FROM lotes ORDER BY data_entrada DESC, id DESC”””
+‘’‘SELECT id, nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte
+FROM lotes ORDER BY data_entrada DESC, id DESC’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
 def obter_lote(lote_id):
 with _conexao() as conn:
 row = conn.execute(
-“”“SELECT id, nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte
-FROM lotes WHERE id = ?”””,
+‘’‘SELECT id, nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte
+FROM lotes WHERE id = ?’’’,
 (lote_id,),
 ).fetchone()
 return tuple(row) if row else None
@@ -317,7 +317,7 @@ cur = conn.execute(
 return cur.lastrowid
 
 def listar_animais(incluir_inativos: bool = False):
-“”“Retorna animais. Por padrão exclui mortos (ativo=0).”””
+‘’‘Retorna animais. Por padrão exclui mortos (ativo=0).’’’
 with _conexao() as conn:
 if incluir_inativos:
 rows = conn.execute(
@@ -330,7 +330,7 @@ rows = conn.execute(
 return [tuple(r) for r in rows]
 
 def listar_animais_por_lote(lote_id, incluir_inativos: bool = False):
-“”“Retorna animais do lote. Por padrão exclui mortos (ativo=0).”””
+‘’‘Retorna animais do lote. Por padrão exclui mortos (ativo=0).’’’
 with _conexao() as conn:
 if incluir_inativos:
 rows = conn.execute(
@@ -345,7 +345,7 @@ rows = conn.execute(
 return [tuple(r) for r in rows]
 
 def contar_animais_no_lote(lote_id, incluir_inativos: bool = False):
-“”“Conta animais ativos do lote. Por padrão exclui mortos.”””
+‘’‘Conta animais ativos do lote. Por padrão exclui mortos.’’’
 with _conexao() as conn:
 if incluir_inativos:
 row = conn.execute(
@@ -376,9 +376,9 @@ return [tuple(r) for r in rows]
 def adicionar_ocorrencia(animal_id, data, tipo, descricao, gravidade, custo, dias_recuperacao, status):
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO ocorrencias
+‘’‘INSERT INTO ocorrencias
 (animal_id, data, tipo, descricao, gravidade, custo, dias_recuperacao, status)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)”””,
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)’’’,
 (animal_id, data, tipo, descricao, gravidade, custo, dias_recuperacao, status),
 )
 return cur.lastrowid
@@ -386,9 +386,9 @@ return cur.lastrowid
 def listar_ocorrencias(animal_id):
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT id, animal_id, data, tipo, descricao,
+‘’‘SELECT id, animal_id, data, tipo, descricao,
 gravidade, custo, dias_recuperacao, status
-FROM ocorrencias WHERE animal_id = ? ORDER BY data ASC, id ASC”””,
+FROM ocorrencias WHERE animal_id = ? ORDER BY data ASC, id ASC’’’,
 (animal_id,),
 ).fetchall()
 return [tuple(r) for r in rows]
@@ -414,7 +414,7 @@ cur = conn.execute(
 return cur.lastrowid
 
 def autenticar_usuario(email: str, senha: str):
-“”“Retorna dict com dados do usuário ou None se inválido.”””
+‘’‘Retorna dict com dados do usuário ou None se inválido.’’’
 with _conexao() as conn:
 row = conn.execute(
 “SELECT id, nome, email, senha_hash, salt, perfil, fazenda_id, ativo FROM usuarios WHERE email = ?”,
@@ -428,7 +428,7 @@ return dict(id=row[“id”], nome=row[“nome”], email=row[“email”],
 perfil=row[“perfil”], fazenda_id=row[“fazenda_id”])
 
 def listar_usuarios():
-“”“Tupla: (id, nome, email, perfil, fazenda_id)”””
+‘’‘Tupla: (id, nome, email, perfil, fazenda_id)’’’
 with _conexao() as conn:
 rows = conn.execute(
 “SELECT id, nome, email, perfil, fazenda_id FROM usuarios WHERE ativo = 1 ORDER BY nome”
@@ -463,7 +463,7 @@ cur = conn.execute(
 return cur.lastrowid
 
 def listar_fazendas():
-“”“Tupla: (id, nome, cidade, estado)”””
+‘’‘Tupla: (id, nome, cidade, estado)’’’
 with _conexao() as conn:
 rows = conn.execute(
 “SELECT id, nome, cidade, estado FROM fazendas ORDER BY nome”
@@ -480,8 +480,8 @@ def adicionar_vacina_agenda(lote_id: int, nome_vacina: str,
 data_prevista: str, observacao: str = “”) -> int:
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO vacinas_agenda (lote_id, nome_vacina, data_prevista, observacao)
-VALUES (?, ?, ?, ?)”””,
+‘’‘INSERT INTO vacinas_agenda (lote_id, nome_vacina, data_prevista, observacao)
+VALUES (?, ?, ?, ?)’’’,
 (lote_id, nome_vacina, data_prevista, observacao),
 )
 return cur.lastrowid
@@ -494,30 +494,30 @@ conn.execute(
 )
 
 def listar_vacinas_agenda(lote_id=None):
-“”“Tupla: (id, lote_id, nome_vacina, data_prevista, data_realizada, status, observacao)”””
+‘’‘Tupla: (id, lote_id, nome_vacina, data_prevista, data_realizada, status, observacao)’’’
 with _conexao() as conn:
 if lote_id:
 rows = conn.execute(
-“”“SELECT id, lote_id, nome_vacina, data_prevista, data_realizada, status, observacao
-FROM vacinas_agenda WHERE lote_id=? ORDER BY data_prevista”””,
+‘’‘SELECT id, lote_id, nome_vacina, data_prevista, data_realizada, status, observacao
+FROM vacinas_agenda WHERE lote_id=? ORDER BY data_prevista’’’,
 (lote_id,),
 ).fetchall()
 else:
 rows = conn.execute(
-“”“SELECT id, lote_id, nome_vacina, data_prevista, data_realizada, status, observacao
-FROM vacinas_agenda ORDER BY data_prevista”””
+‘’‘SELECT id, lote_id, nome_vacina, data_prevista, data_realizada, status, observacao
+FROM vacinas_agenda ORDER BY data_prevista’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
 def listar_vacinas_pendentes():
-“”“Vacinas com status pendente, ordenadas por data.”””
+‘’‘Vacinas com status pendente, ordenadas por data.’’’
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT v.id, v.lote_id, l.nome, v.nome_vacina, v.data_prevista, v.status, v.observacao
+‘’‘SELECT v.id, v.lote_id, l.nome, v.nome_vacina, v.data_prevista, v.status, v.observacao
 FROM vacinas_agenda v
 JOIN lotes l ON l.id = v.lote_id
 WHERE v.status = ‘pendente’
-ORDER BY v.data_prevista”””
+ORDER BY v.data_prevista’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
@@ -532,18 +532,18 @@ estoque_minimo: float, validade: str,
 custo_unitario: float) -> int:
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO medicamentos (nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario)
-VALUES (?, ?, ?, ?, ?, ?)”””,
+‘’‘INSERT INTO medicamentos (nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario)
+VALUES (?, ?, ?, ?, ?, ?)’’’,
 (nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario),
 )
 return cur.lastrowid
 
 def listar_medicamentos():
-“”“Tupla: (id, nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario)”””
+‘’‘Tupla: (id, nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario)’’’
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT id, nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario
-FROM medicamentos ORDER BY nome”””
+‘’‘SELECT id, nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario
+FROM medicamentos ORDER BY nome’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
@@ -560,21 +560,21 @@ ocorrencia_id=None) -> int:
 atualizar_estoque(medicamento_id, quantidade)
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO medicamentos_uso (medicamento_id, animal_id, ocorrencia_id, data_uso, quantidade)
-VALUES (?, ?, ?, ?, ?)”””,
+‘’‘INSERT INTO medicamentos_uso (medicamento_id, animal_id, ocorrencia_id, data_uso, quantidade)
+VALUES (?, ?, ?, ?, ?)’’’,
 (medicamento_id, animal_id, ocorrencia_id, data_uso, quantidade),
 )
 return cur.lastrowid
 
 def listar_medicamentos_criticos():
-“”“Medicamentos com estoque baixo ou validade próxima (30 dias).”””
+‘’‘Medicamentos com estoque baixo ou validade próxima (30 dias).’’’
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT id, nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario
+‘’‘SELECT id, nome, unidade, estoque_atual, estoque_minimo, validade, custo_unitario
 FROM medicamentos
 WHERE estoque_atual <= estoque_minimo
 OR (validade IS NOT NULL AND validade <= date(‘now’, ‘+30 days’))
-ORDER BY validade”””
+ORDER BY validade’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
@@ -590,10 +590,10 @@ resultado=“pendente”, data_parto_previsto=None,
 observacao=””) -> int:
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO reproducao
+‘’‘INSERT INTO reproducao
 (animal_id, data_cio, tipo_cobertura, data_diagnostico,
 resultado, data_parto_previsto, observacao)
-VALUES (?, ?, ?, ?, ?, ?, ?)”””,
+VALUES (?, ?, ?, ?, ?, ?, ?)’’’,
 (animal_id, data_cio, tipo_cobertura, data_diagnostico,
 resultado, data_parto_previsto, observacao),
 )
@@ -604,52 +604,52 @@ data_parto_real=None, data_diagnostico=None,
 data_parto_previsto=None):
 with _conexao() as conn:
 conn.execute(
-“”“UPDATE reproducao SET resultado=?,
+‘’‘UPDATE reproducao SET resultado=?,
 data_parto_real=COALESCE(?, data_parto_real),
 data_diagnostico=COALESCE(?, data_diagnostico),
 data_parto_previsto=COALESCE(?, data_parto_previsto)
-WHERE id=?”””,
+WHERE id=?’’’,
 (resultado, data_parto_real, data_diagnostico, data_parto_previsto, repro_id),
 )
 
 def listar_reproducao(animal_id: int):
-“”“Tupla: (id, animal_id, data_cio, tipo_cobertura, data_diagnostico,
-resultado, data_parto_previsto, data_parto_real, observacao)”””
+‘’‘Tupla: (id, animal_id, data_cio, tipo_cobertura, data_diagnostico,
+resultado, data_parto_previsto, data_parto_real, observacao)’’’
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT id, animal_id, data_cio, tipo_cobertura, data_diagnostico,
+‘’‘SELECT id, animal_id, data_cio, tipo_cobertura, data_diagnostico,
 resultado, data_parto_previsto, data_parto_real, observacao
-FROM reproducao WHERE animal_id=? ORDER BY data_cio DESC”””,
+FROM reproducao WHERE animal_id=? ORDER BY data_cio DESC’’’,
 (animal_id,),
 ).fetchall()
 return [tuple(r) for r in rows]
 
 def listar_partos_previstos():
-“”“Partos previstos nos próximos 30 dias.”””
+‘’‘Partos previstos nos próximos 30 dias.’’’
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT r.id, a.identificacao, l.nome, r.data_parto_previsto, r.tipo_cobertura
+‘’‘SELECT r.id, a.identificacao, l.nome, r.data_parto_previsto, r.tipo_cobertura
 FROM reproducao r
 JOIN animais a ON a.id = r.animal_id
 JOIN lotes   l ON l.id = a.lote_id
 WHERE r.resultado=‘positivo’
 AND r.data_parto_real IS NULL
 AND r.data_parto_previsto <= date(‘now’, ‘+30 days’)
-ORDER BY r.data_parto_previsto”””
+ORDER BY r.data_parto_previsto’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
 def taxa_prenhez_lote(lote_id: int) -> dict:
 with _conexao() as conn:
 total = conn.execute(
-“”“SELECT COUNT(DISTINCT r.animal_id) FROM reproducao r
-JOIN animais a ON a.id=r.animal_id WHERE a.lote_id=?”””,
+‘’‘SELECT COUNT(DISTINCT r.animal_id) FROM reproducao r
+JOIN animais a ON a.id=r.animal_id WHERE a.lote_id=?’’’,
 (lote_id,),
 ).fetchone()[0]
 positivas = conn.execute(
-“”“SELECT COUNT(DISTINCT r.animal_id) FROM reproducao r
-JOIN animais a ON a.id=r.animal_id
-WHERE a.lote_id=? AND r.resultado=‘positivo’”””,
+“SELECT COUNT(DISTINCT r.animal_id) FROM reproducao r”
+“ JOIN animais a ON a.id=r.animal_id”
+“ WHERE a.lote_id=? AND r.resultado=‘positivo’”,
 (lote_id,),
 ).fetchone()[0]
 return dict(total=total, positivas=positivas,
@@ -671,7 +671,7 @@ cur = conn.execute(
 return cur.lastrowid
 
 def listar_piquetes(fazenda_id=None):
-“”“Tupla: (id, fazenda_id, nome, area_ha, capacidade_ua)”””
+‘’‘Tupla: (id, fazenda_id, nome, area_ha, capacidade_ua)’’’
 with _conexao() as conn:
 if fazenda_id:
 rows = conn.execute(
@@ -702,10 +702,10 @@ conn.execute(
 def historico_piquete(piquete_id: int):
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT ph.id, l.nome, ph.entrada, ph.saida
+‘’‘SELECT ph.id, l.nome, ph.entrada, ph.saida
 FROM piquetes_historico ph
 JOIN lotes l ON l.id=ph.lote_id
-WHERE ph.piquete_id=? ORDER BY ph.entrada DESC”””,
+WHERE ph.piquete_id=? ORDER BY ph.entrada DESC’’’,
 (piquete_id,),
 ).fetchall()
 return [tuple(r) for r in rows]
@@ -721,7 +721,7 @@ from datetime import date as _date, timedelta as _td
 TRIAL_DIAS = 30
 
 def ativar_trial(usuario_id: int):
-“”“Define trial_inicio=hoje e plano_expira=hoje+30 para o usuário.”””
+‘’‘Define trial_inicio=hoje e plano_expira=hoje+30 para o usuário.’’’
 hoje = str(_date.today())
 expira = str(_date.today() + _td(days=TRIAL_DIAS))
 with _conexao() as conn:
@@ -731,7 +731,7 @@ conn.execute(
 )
 
 def obter_status_plano(usuario_id: int) -> dict:
-“””
+‘’’
 Retorna dict com:
 plano          : ‘trial’ | ‘pago’ | ‘expirado’
 dias_restantes : int (negativo se expirado)
@@ -739,7 +739,7 @@ trial_inicio   : str | None
 plano_expira   : str | None
 pode_exportar  : bool  (False no trial / expirado)
 ativo          : bool
-“””
+‘’’
 with _conexao() as conn:
 row = conn.execute(
 “SELECT plano, trial_inicio, plano_expira, ativo FROM usuarios WHERE id=?”,
@@ -789,7 +789,7 @@ return dict(
 ```
 
 def converter_para_pago(usuario_id: int):
-“”“Marca o usuário como plano pago (sem expiração).”””
+‘’‘Marca o usuário como plano pago (sem expiração).’’’
 with _conexao() as conn:
 conn.execute(
 “UPDATE usuarios SET plano=‘pago’, plano_expira=NULL WHERE id=?”,
@@ -797,18 +797,18 @@ conn.execute(
 )
 
 def listar_usuarios_trial_expirando(dias: int = 7) -> list:
-“”“Retorna usuários com trial expirando nos próximos `dias` dias.”””
+‘’‘Retorna usuários com trial expirando nos próximos `dias` dias.’’’
 limite = str(_date.today() + _td(days=dias))
 hoje   = str(_date.today())
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT id, nome, email, plano_expira
+‘’‘SELECT id, nome, email, plano_expira
 FROM usuarios
 WHERE plano=‘trial’
 AND plano_expira IS NOT NULL
 AND plano_expira >= ?
 AND plano_expira <= ?
-ORDER BY plano_expira”””,
+ORDER BY plano_expira’’’,
 (hoje, limite),
 ).fetchall()
 return [tuple(r) for r in rows]
@@ -821,7 +821,7 @@ return [tuple(r) for r in rows]
 
 def atualizar_animal_detalhes(animal_id: int, peso_alvo: float = None,
 observacoes: str = None, foto_path: str = None):
-“”“Atualiza campos extras do animal sem sobrescrever os outros.”””
+‘’‘Atualiza campos extras do animal sem sobrescrever os outros.’’’
 campos, vals = [], []
 if peso_alvo is not None:
 campos.append(“peso_alvo=?”); vals.append(peso_alvo)
@@ -836,21 +836,21 @@ with _conexao() as conn:
 conn.execute(f”UPDATE animais SET {’, ’.join(campos)} WHERE id=?”, vals)
 
 def obter_animal(animal_id: int) -> tuple | None:
-“””
+‘’’
 Retorna tupla completa do animal:
 (id, identificacao, idade, lote_id, sexo, raca, peso_entrada,
 peso_alvo, observacoes, foto_path)
-“””
+‘’’
 with _conexao() as conn:
 row = conn.execute(
-“”“SELECT id, identificacao, idade, lote_id,
+‘’‘SELECT id, identificacao, idade, lote_id,
 COALESCE(sexo,‘indefinido’) as sexo,
 COALESCE(raca,’’) as raca,
 COALESCE(peso_entrada,0) as peso_entrada,
 COALESCE(peso_alvo,0) as peso_alvo,
 COALESCE(observacoes,’’) as observacoes,
 COALESCE(foto_path,NULL) as foto_path
-FROM animais WHERE id=?”””,
+FROM animais WHERE id=?’’’,
 (animal_id,),
 ).fetchone()
 return tuple(row) if row else None
@@ -862,11 +862,11 @@ return tuple(row) if row else None
 # ===========================================================================
 
 def calcular_previsao_abate(animal_id: int) -> dict:
-“””
+‘’’
 Calcula data estimada de abate com base no GMD atual e peso alvo.
 Retorna dict com: gmd, peso_atual, peso_alvo, dias_restantes,
 data_prevista, confianca
-“””
+‘’’
 import pandas as pd
 from datetime import date as dt
 
@@ -932,7 +932,7 @@ return dict(
 
 def registrar_morte(animal_id: int, data: str, causa: str,
 descricao: str = “”, custo_perda: float = 0.0) -> int:
-“”“Baixa o animal, registra a causa da morte e atualiza qtd do lote.”””
+‘’‘Baixa o animal, registra a causa da morte e atualiza qtd do lote.’’’
 with _conexao() as conn:
 # buscar lote_id antes de inativar
 row = conn.execute(
@@ -946,9 +946,9 @@ lote_id = row[0] if row else None
         "UPDATE animais SET ativo=0 WHERE id=?", (animal_id,)
     )
     cur = conn.execute(
-        """INSERT INTO mortalidade
+        '''INSERT INTO mortalidade
            (animal_id, data, causa, descricao, custo_perda)
-           VALUES (?,?,?,?,?)""",
+           VALUES (?,?,?,?,?)''',
         (animal_id, data, causa, descricao, custo_perda),
     )
     mid = cur.lastrowid
@@ -961,27 +961,27 @@ return mid
 ```
 
 def listar_mortalidade(lote_id: int = None) -> list:
-“””
+‘’’
 Tupla: (id, animal_id, identificacao, data, causa, descricao, custo_perda)
-“””
+‘’’
 with _conexao() as conn:
 if lote_id:
 rows = conn.execute(
-“”“SELECT m.id, m.animal_id, a.identificacao,
+‘’‘SELECT m.id, m.animal_id, a.identificacao,
 m.data, m.causa, m.descricao, m.custo_perda
 FROM mortalidade m
 JOIN animais a ON a.id = m.animal_id
 WHERE a.lote_id = ?
-ORDER BY m.data DESC”””,
+ORDER BY m.data DESC’’’,
 (lote_id,),
 ).fetchall()
 else:
 rows = conn.execute(
-“”“SELECT m.id, m.animal_id, a.identificacao,
+‘’‘SELECT m.id, m.animal_id, a.identificacao,
 m.data, m.causa, m.descricao, m.custo_perda
 FROM mortalidade m
 JOIN animais a ON a.id = m.animal_id
-ORDER BY m.data DESC”””
+ORDER BY m.data DESC’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
@@ -991,9 +991,9 @@ total = conn.execute(
 “SELECT COUNT(*) FROM animais WHERE lote_id=?”, (lote_id,)
 ).fetchone()[0]
 mortos = conn.execute(
-“”“SELECT COUNT(*) FROM mortalidade m
+‘’’SELECT COUNT(*) FROM mortalidade m
 JOIN animais a ON a.id=m.animal_id
-WHERE a.lote_id=?”””,
+WHERE a.lote_id=?’’’,
 (lote_id,),
 ).fetchone()[0]
 taxa = (mortos / total * 100) if total > 0 else 0
@@ -1008,37 +1008,37 @@ return dict(total=total, mortos=mortos, taxa=round(taxa, 2))
 def registrar_auditoria(usuario_id: int, acao: str,
 tabela: str = “”, registro_id: int = None,
 detalhe: str = “”):
-“”“Registra qualquer ação relevante do usuário.”””
+‘’‘Registra qualquer ação relevante do usuário.’’’
 with _conexao() as conn:
 conn.execute(
-“”“INSERT INTO auditoria
+‘’‘INSERT INTO auditoria
 (usuario_id, acao, tabela, registro_id, detalhe, data_hora)
-VALUES (?,?,?,?,?, datetime(‘now’,‘localtime’))”””,
+VALUES (?,?,?,?,?, datetime(‘now’,‘localtime’))’’’,
 (usuario_id, acao, tabela, registro_id, detalhe),
 )
 
 def listar_auditoria(limite: int = 100, usuario_id: int = None) -> list:
-“””
+‘’’
 Tupla: (id, usuario_nome, acao, tabela, registro_id, detalhe, data_hora)
-“””
+‘’’
 with _conexao() as conn:
 if usuario_id:
 rows = conn.execute(
-“”“SELECT a.id, u.nome, a.acao, a.tabela,
+‘’‘SELECT a.id, u.nome, a.acao, a.tabela,
 a.registro_id, a.detalhe, a.data_hora
 FROM auditoria a
 JOIN usuarios u ON u.id=a.usuario_id
 WHERE a.usuario_id=?
-ORDER BY a.id DESC LIMIT ?”””,
+ORDER BY a.id DESC LIMIT ?’’’,
 (usuario_id, limite),
 ).fetchall()
 else:
 rows = conn.execute(
-“”“SELECT a.id, u.nome, a.acao, a.tabela,
+‘’‘SELECT a.id, u.nome, a.acao, a.tabela,
 a.registro_id, a.detalhe, a.data_hora
 FROM auditoria a
 JOIN usuarios u ON u.id=a.usuario_id
-ORDER BY a.id DESC LIMIT ?”””,
+ORDER BY a.id DESC LIMIT ?’’’,
 (limite,),
 ).fetchall()
 return [tuple(r) for r in rows]
@@ -1053,17 +1053,17 @@ def registrar_gta(lote_id: int, numero_gta: str, data_emissao: str,
 origem: str, destino: str, quantidade: int,
 finalidade: str = “Abate”,
 observacao: str = “”) -> int:
-“””
+‘’’
 Registra uma GTA. Se finalidade for Abate ou Venda,
 baixa os animais mais recentes do lote (marca ativo=0)
 e atualiza a contagem do lote.
-“””
+‘’’
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO gta
+‘’‘INSERT INTO gta
 (lote_id, numero_gta, data_emissao, origem, destino,
 quantidade, finalidade, observacao)
-VALUES (?,?,?,?,?,?,?,?)”””,
+VALUES (?,?,?,?,?,?,?,?)’’’,
 (lote_id, numero_gta, data_emissao, origem, destino,
 quantidade, finalidade, observacao),
 )
@@ -1074,9 +1074,9 @@ gta_id = cur.lastrowid
     if finalidade in ("Abate", "Venda"):
         # pega os N animais ativos mais recentes
         rows = conn.execute(
-            """SELECT id FROM animais
+            '''SELECT id FROM animais
                WHERE lote_id=? AND COALESCE(ativo,1)=1
-               ORDER BY id DESC LIMIT ?""",
+               ORDER BY id DESC LIMIT ?''',
             (lote_id, quantidade),
         ).fetchall()
         for row in rows:
@@ -1090,27 +1090,27 @@ return gta_id
 ```
 
 def listar_gta(lote_id: int = None) -> list:
-“””
+‘’’
 Tupla: (id, lote_id, nome_lote, numero_gta, data_emissao,
 origem, destino, quantidade, finalidade, observacao)
-“””
+‘’’
 with _conexao() as conn:
 if lote_id:
 rows = conn.execute(
-“”“SELECT g.id, g.lote_id, l.nome, g.numero_gta,
+‘’‘SELECT g.id, g.lote_id, l.nome, g.numero_gta,
 g.data_emissao, g.origem, g.destino,
 g.quantidade, g.finalidade, g.observacao
 FROM gta g JOIN lotes l ON l.id=g.lote_id
-WHERE g.lote_id=? ORDER BY g.data_emissao DESC”””,
+WHERE g.lote_id=? ORDER BY g.data_emissao DESC’’’,
 (lote_id,),
 ).fetchall()
 else:
 rows = conn.execute(
-“”“SELECT g.id, g.lote_id, l.nome, g.numero_gta,
+‘’‘SELECT g.id, g.lote_id, l.nome, g.numero_gta,
 g.data_emissao, g.origem, g.destino,
 g.quantidade, g.finalidade, g.observacao
 FROM gta g JOIN lotes l ON l.id=g.lote_id
-ORDER BY g.data_emissao DESC”””
+ORDER BY g.data_emissao DESC’’’
 ).fetchall()
 return [tuple(r) for r in rows]
 
@@ -1118,8 +1118,8 @@ def registrar_sisbov(animal_id: int, numero_sisbov: str,
 data_certificacao: str) -> int:
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO sisbov (animal_id, numero_sisbov, data_certificacao)
-VALUES (?,?,?)”””,
+‘’‘INSERT INTO sisbov (animal_id, numero_sisbov, data_certificacao)
+VALUES (?,?,?)’’’,
 (animal_id, numero_sisbov, data_certificacao),
 )
 return cur.lastrowid
@@ -1139,22 +1139,22 @@ return tuple(row) if row else None
 # ===========================================================================
 
 def verificar_carencia(animal_id: int) -> dict:
-“””
+‘’’
 Verifica se o animal está em período de carência de algum medicamento.
 Retorna dict com: em_carencia (bool), medicamentos (list de dicts),
 liberado_em (str | None)
-“””
+‘’’
 from datetime import date as dt
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT mu.data_uso, m.nome, m.carencia_dias,
+‘’‘SELECT mu.data_uso, m.nome, m.carencia_dias,
 date(mu.data_uso, ‘+’ || m.carencia_dias || ’ days’) as libera_em
 FROM medicamentos_uso mu
 JOIN medicamentos m ON m.id = mu.medicamento_id
 WHERE mu.animal_id = ?
 AND m.carencia_dias > 0
 AND date(mu.data_uso, ‘+’ || m.carencia_dias || ’ days’) >= date(‘now’)
-ORDER BY libera_em DESC”””,
+ORDER BY libera_em DESC’’’,
 (animal_id,),
 ).fetchall()
 
@@ -1175,10 +1175,10 @@ return dict(em_carencia=True, medicamentos=meds, liberado_em=liberado_em)
 # ===========================================================================
 
 def calcular_score_saude(animal_id: int) -> dict:
-“””
+‘’’
 Score 0-100 combinando GMD, ocorrências e reprodução.
 Retorna dict: score, classificacao, detalhes
-“””
+‘’’
 import pandas as pd
 
 ```
@@ -1245,20 +1245,20 @@ preco_venda_kg: float, peso_total_kg: float,
 frigorific: str = “”, observacao: str = “”) -> int:
 with _conexao() as conn:
 cur = conn.execute(
-“”“INSERT INTO vendas_lote
+‘’‘INSERT INTO vendas_lote
 (lote_id, data_venda, preco_venda_kg, peso_total_kg,
 frigorific, observacao)
-VALUES (?,?,?,?,?,?)”””,
+VALUES (?,?,?,?,?,?)’’’,
 (lote_id, data_venda, preco_venda_kg, peso_total_kg,
 frigorific, observacao),
 )
 return cur.lastrowid
 
 def calcular_margem_lote(lote_id: int) -> dict:
-“””
+‘’’
 Calcula margem real: receita real - custo de compra - custos operacionais.
 Retorna dict com todos os componentes financeiros.
-“””
+‘’’
 with _conexao() as conn:
 lote = obter_lote(lote_id)
 if not lote:
@@ -1275,8 +1275,8 @@ return {}
 
     # receita real de venda
     venda = conn.execute(
-        """SELECT preco_venda_kg, peso_total_kg, data_venda, frigorific
-           FROM vendas_lote WHERE lote_id=? ORDER BY id DESC LIMIT 1""",
+        '''SELECT preco_venda_kg, peso_total_kg, data_venda, frigorific
+           FROM vendas_lote WHERE lote_id=? ORDER BY id DESC LIMIT 1''',
         (lote_id,),
     ).fetchone()
 
@@ -1314,9 +1314,9 @@ return dict(
 def listar_vendas_lote(lote_id: int) -> list:
 with _conexao() as conn:
 rows = conn.execute(
-“”“SELECT id, lote_id, data_venda, preco_venda_kg,
+‘’‘SELECT id, lote_id, data_venda, preco_venda_kg,
 peso_total_kg, frigorific, observacao
-FROM vendas_lote WHERE lote_id=? ORDER BY data_venda DESC”””,
+FROM vendas_lote WHERE lote_id=? ORDER BY data_venda DESC’’’,
 (lote_id,),
 ).fetchall()
 return [tuple(r) for r in rows]
@@ -1331,15 +1331,15 @@ def salvar_cotacao(data: str, preco: float, fonte: str = “manual”) -> int:
 with _conexao() as conn:
 # upsert por data
 cur = conn.execute(
-“”“INSERT INTO cotacoes (data, preco, fonte)
+‘’‘INSERT INTO cotacoes (data, preco, fonte)
 VALUES (?,?,?)
-ON CONFLICT(data) DO UPDATE SET preco=excluded.preco, fonte=excluded.fonte”””,
+ON CONFLICT(data) DO UPDATE SET preco=excluded.preco, fonte=excluded.fonte’’’,
 (data, preco, fonte),
 )
 return cur.lastrowid
 
 def listar_cotacoes(dias: int = 30) -> list:
-“”“Tupla: (id, data, preco, fonte) – últimos N dias.”””
+‘’‘Tupla: (id, data, preco, fonte) – últimos N dias.’’’
 with _conexao() as conn:
 if dias <= 0:
 rows = conn.execute(
@@ -1347,9 +1347,9 @@ rows = conn.execute(
 ).fetchall()
 else:
 rows = conn.execute(
-“”“SELECT id, data, preco, fonte FROM cotacoes
+‘’‘SELECT id, data, preco, fonte FROM cotacoes
 WHERE data >= date(‘now’, ? || ’ days’)
-ORDER BY data ASC”””,
+ORDER BY data ASC’’’,
 (f”-{dias}”,),
 ).fetchall()
 return [tuple(r) for r in rows]
@@ -1368,10 +1368,10 @@ return tuple(row) if row else None
 # ===========================================================================
 
 def calcular_gmd_temporal(lote_id: int, janela_dias: int = 14) -> list:
-“””
+‘’’
 Retorna lista de (data, gmd_medio) calculado em janelas de `janela_dias`.
 Permite plotar a evolução do GMD ao longo do tempo.
-“””
+‘’’
 import pandas as pd
 from datetime import timedelta as td
 
@@ -1420,11 +1420,11 @@ return resultado
 # ===========================================================================
 
 def importar_pesagens_csv(linhas: list, lote_id: int) -> dict:
-“””
+‘’’
 Importa pesagens de uma lista de dicts com chaves:
 identificacao, peso, data
 Cria o animal se não existir. Retorna dict com contadores.
-“””
+‘’’
 ok = erros = criados = 0
 msgs = []
 
@@ -1457,11 +1457,11 @@ return dict(importados=ok, erros=erros, animais_criados=criados, mensagens=msgs)
 ```
 
 def importar_animais_csv(linhas: list, lote_id: int) -> dict:
-“””
+‘’’
 Importa animais de lista de dicts com chaves:
 identificacao, idade (opcional), raca (opcional), sexo (opcional),
 peso_entrada (opcional), peso_alvo (opcional)
-“””
+‘’’
 ok = erros = 0
 msgs = []
 existentes = {a[1] for a in listar_animais_por_lote(lote_id)}
@@ -1502,10 +1502,10 @@ return dict(importados=ok, erros=erros, mensagens=msgs)
 # ===========================================================================
 
 def atualizar_qtd_lote(lote_id: int):
-“””
+‘’’
 Recalcula e atualiza qtd_recebida do lote com base nos animais ativos.
 Chamado após morte ou GTA de saída.
-“””
+‘’’
 with _conexao() as conn:
 total_ativos = conn.execute(
 “SELECT COUNT(*) FROM animais WHERE lote_id=? AND COALESCE(ativo,1)=1”,
@@ -1518,11 +1518,11 @@ conn.execute(
 return total_ativos
 
 def resumo_lote(lote_id: int) -> dict:
-“””
+‘’’
 Retorna um resumo completo e consistente do lote:
 total_animais, mortos, gtas_emitidas, animais_gta,
 ocorrencias, custo_sanitario, vacinas_pendentes
-“””
+‘’’
 with _conexao() as conn:
 ativos = conn.execute(
 “SELECT COUNT(*) FROM animais WHERE lote_id=? AND COALESCE(ativo,1)=1”,
@@ -1531,9 +1531,9 @@ ativos = conn.execute(
 
 ```
     mortos = conn.execute(
-        """SELECT COUNT(*) FROM mortalidade m
+        '''SELECT COUNT(*) FROM mortalidade m
            JOIN animais a ON a.id=m.animal_id
-           WHERE a.lote_id=?""",
+           WHERE a.lote_id=?''',
         (lote_id,),
     ).fetchone()[0]
 
@@ -1548,16 +1548,16 @@ ativos = conn.execute(
     ).fetchone()
 
     custo_san = conn.execute(
-        """SELECT COALESCE(SUM(o.custo),0) FROM ocorrencias o
+        '''SELECT COALESCE(SUM(o.custo),0) FROM ocorrencias o
            JOIN animais a ON a.id=o.animal_id
-           WHERE a.lote_id=?""",
+           WHERE a.lote_id=?''',
         (lote_id,),
     ).fetchone()[0]
 
     ocorrencias = conn.execute(
-        """SELECT COUNT(*) FROM ocorrencias o
+        '''SELECT COUNT(*) FROM ocorrencias o
            JOIN animais a ON a.id=o.animal_id
-           WHERE a.lote_id=?""",
+           WHERE a.lote_id=?''',
         (lote_id,),
     ).fetchone()[0]
 
