@@ -1,11 +1,12 @@
 [server]
-# Evita o aviso de "missing ScriptRunContext" em logs
 headless = true
 
 [theme]
-# Tema claro padrão — remova esta seção para usar o tema do sistema
-base = "light"
+primaryColor       = "#1F5C2E"
+backgroundColor    = "#FFFFFF"
+secondaryBackgroundColor = "#F0F4F0"
+textColor          = "#1A1A1A"
+font               = "sans serif"
 
 [client]
-# Exibe erros completos apenas em desenvolvimento; em produção use false
 showErrorDetails = false
