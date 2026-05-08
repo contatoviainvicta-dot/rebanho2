@@ -1,7 +1,7 @@
-“””
+‘’’
 Sistema de Gestão Pecuária – app principal.
 Execute com:  streamlit run app.py
-“””
+‘’’
 
 import streamlit as st
 import pandas as pd
@@ -329,7 +329,7 @@ menu = _menu_map.get(menu, None)
 # —————————————————————————
 
 def _page_header(icone: str, titulo: str, subtitulo: str = “”):
-“”“Renderiza cabeçalho limpo e padronizado em todas as telas.”””
+‘’‘Renderiza cabeçalho limpo e padronizado em todas as telas.’’’
 st.markdown(f”## {icone} {titulo}”)
 if subtitulo:
 st.caption(subtitulo)
@@ -2263,7 +2263,7 @@ _page_header(“📧”, “Notificações”, “Alertas por e-mail e gestão d
 ```
 if not email_configurado():
     st.warning("⚠️ E-mail não configurado.")
-    st.markdown("""
+    st.markdown('''
     Para ativar as notificações, crie o arquivo `.streamlit/secrets.toml` com:
     ```toml
     [email]
@@ -2275,7 +2275,7 @@ if not email_configurado():
     ```
     Para Gmail, use uma **Senha de App** (não a senha da conta).
     [Como criar →](https://support.google.com/accounts/answer/185833)
-    """)
+    ''')
     st.stop()
 
 st.success("✅ E-mail configurado e pronto para envio.")
@@ -2638,14 +2638,14 @@ st.divider()
 tab1, tab2 = st.tabs(["⚖️ Importar Pesagens", "🐄 Importar Animais"])
 
 with tab1:
-    st.markdown("""
+    st.markdown('''
     **Formato esperado do CSV:**
     ```
     identificacao,peso,data
     BOI-001,310.5,2024-01-15
     BOI-002,295.0,2024-01-15
     ```
-    """)
+    ''')
     arq = st.file_uploader("Selecione o arquivo CSV", type=["csv"], key="csv_pesagens")
     if arq:
         import csv as csv_mod, io as io_mod
@@ -2664,14 +2664,14 @@ with tab1:
                 st.warning(msg)
 
 with tab2:
-    st.markdown("""
+    st.markdown('''
     **Formato esperado do CSV:**
     ```
     identificacao,idade,raca,sexo,peso_entrada,peso_alvo
     BOI-001,24,Nelore,macho,280,450
     ```
     Apenas `identificacao` é obrigatório.
-    """)
+    ''')
     arq2 = st.file_uploader("Selecione o arquivo CSV", type=["csv"], key="csv_animais")
     if arq2:
         import csv as csv_mod, io as io_mod
