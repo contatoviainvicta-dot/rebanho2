@@ -1,5 +1,5 @@
 “””
-Sistema de Gestão Pecuária — app principal.
+Sistema de Gestão Pecuária – app principal.
 Execute com:  streamlit run app.py
 “””
 
@@ -158,7 +158,7 @@ st.stop()
 
 # —————————————————————————
 
-# SIDEBAR — usuário logado
+# SIDEBAR – usuário logado
 
 # —————————————————————————
 
@@ -576,11 +576,11 @@ if len(df_oc) > 0:
             inc_a  = (len(set(o[1] for o in ocs_a))/tot_a*100) if ocs_a else 0
             gmd_a  = sum(gmds_a)/len(gmds_a) if gmds_a else 0
             if inc_a > 20 and gmd_a < 0.5:
-                st.error(f"🔴 {nom_a}: incidência {inc_a:.1f}% + GMD {gmd_a:.2f} — problema grave")
+                st.error(f"🔴 {nom_a}: incidência {inc_a:.1f}% + GMD {gmd_a:.2f} -- problema grave")
             elif custo_a > 1000:
                 st.warning(f"🟡 {nom_a}: custo sanitário elevado R$ {custo_a:.2f}")
             elif len(ocs_a) >= 5:
-                st.warning(f"🟠 {nom_a}: {len(ocs_a)} ocorrências — monitorar surto")
+                st.warning(f"🟠 {nom_a}: {len(ocs_a)} ocorrências -- monitorar surto")
             else:
                 st.success(f"🟢 {nom_a}: controlado (inc {inc_a:.1f}%, GMD {gmd_a:.2f})")
 else:
@@ -722,7 +722,7 @@ else:
             if peso <= 0:
                 st.error("Informe um peso válido (maior que zero)")
             elif peso > 1000:
-                st.error("Peso muito alto — verifique o valor")
+                st.error("Peso muito alto -- verifique o valor")
             else:
                 adicionar_pesagem(animal_id, peso, str(data_p))
                 registrar_auditoria(u["id"], "pesagem", "pesagens",
@@ -1136,9 +1136,9 @@ else:
                         d2.metric("📆 Período",       f"{dias} dias")
                         d3.metric("📈 GMD",           f"{gmd:.3f} kg/dia")
                         if gmd < 0:
-                            st.error("🚨 Perda de peso — possível doença")
+                            st.error("🚨 Perda de peso -- possível doença")
                         elif gmd > 2:
-                            st.error("🚨 GMD irreal — revisar dados")
+                            st.error("🚨 GMD irreal -- revisar dados")
                         elif gmd < 0.5:
                             st.warning("⚠️ GMD baixo")
                         else:
@@ -1158,11 +1158,11 @@ else:
                 st.metric("💊 Custo total tratamentos", f"R$ {custo_tot:.2f}")
                 for _, row in df_oc.iterrows():
                     if row["gravidade"] == "Alta":
-                        st.error(f"🔴 {row['tipo']} — {row['descricao']}")
+                        st.error(f"🔴 {row['tipo']} -- {row['descricao']}")
                     elif row["gravidade"] == "Média":
-                        st.warning(f"🟡 {row['tipo']} — {row['descricao']}")
+                        st.warning(f"🟡 {row['tipo']} -- {row['descricao']}")
                     else:
-                        st.info(f"🔵 {row['tipo']} — {row['descricao']}")
+                        st.info(f"🔵 {row['tipo']} -- {row['descricao']}")
             else:
                 st.success("✅ Nenhuma ocorrência registrada")
 
@@ -1179,16 +1179,16 @@ else:
                 if gmd < 0.5 and len(ocorrencias) > 0:
                     st.error("🚨 Alto risco: baixo desempenho + histórico clínico")
                 elif gmd < 0.5:
-                    st.warning("⚠️ Baixo GMD — revisar nutrição e sanidade")
+                    st.warning("⚠️ Baixo GMD -- revisar nutrição e sanidade")
                 elif len(ocorrencias) > 0:
-                    st.warning("⚠️ Histórico clínico — monitorar")
+                    st.warning("⚠️ Histórico clínico -- monitorar")
                 else:
                     st.success("✅ Animal saudável e produtivo")
 
             # Carência
             car = verificar_carencia(animal_id)
             if car["em_carencia"]:
-                st.error(f"💊 Em carência até **{car['liberado_em']}** — não abater antes!")
+                st.error(f"💊 Em carência até **{car['liberado_em']}** -- não abater antes!")
             else:
                 st.success("✅ Sem restrição de carência")
 ```
@@ -1425,7 +1425,7 @@ if len(df_oc) > 0:
         if len(custo_por_tipo) > 0:
             tipo_caro   = custo_por_tipo.idxmax()
             valor_caro  = custo_por_tipo.max()
-            st.warning(f"💸 Maior impacto financeiro: **{tipo_caro}** — R$ {valor_caro:.2f}")
+            st.warning(f"💸 Maior impacto financeiro: **{tipo_caro}** -- R$ {valor_caro:.2f}")
 
     # Alertas inteligentes integrados
     st.divider()
@@ -1453,11 +1453,11 @@ if len(df_oc) > 0:
         inc_i  = (len(set(o[1] for o in ocs_i))/tot_i*100) if ocs_i else 0
         gmd_i  = sum(gmds_i)/len(gmds_i) if gmds_i else 0
         if inc_i > 20 and gmd_i < 0.5:
-            st.error(f"🔴 {nom_i}: incidência {inc_i:.1f}% + GMD baixo — atenção urgente")
+            st.error(f"🔴 {nom_i}: incidência {inc_i:.1f}% + GMD baixo -- atenção urgente")
         elif custo_i > 1000:
             st.warning(f"🟡 {nom_i}: custo sanitário elevado R$ {custo_i:.2f}")
         elif len(ocs_i) >= 5:
-            st.warning(f"🟠 {nom_i}: {len(ocs_i)} ocorrências — monitorar surto")
+            st.warning(f"🟠 {nom_i}: {len(ocs_i)} ocorrências -- monitorar surto")
         else:
             st.success(f"🟢 {nom_i}: controlado (inc {inc_i:.1f}%, GMD {gmd_i:.2f})")
 else:
@@ -1596,11 +1596,11 @@ with tab1:
             except Exception:
                 atrasado = False
             if row["Status"] == "realizado":
-                st.success(f"✅ {row['Vacina']} — Lote {row['Lote ID']} — Realizado em {row['Realizado']}")
+                st.success(f"✅ {row['Vacina']} -- Lote {row['Lote ID']} -- Realizado em {row['Realizado']}")
             elif atrasado:
-                st.error(f"🔴 ATRASADA: {row['Vacina']} — Previsto {row['Previsto']}")
+                st.error(f"🔴 ATRASADA: {row['Vacina']} -- Previsto {row['Previsto']}")
             else:
-                st.warning(f"🟡 Pendente: {row['Vacina']} — Previsto {row['Previsto']}")
+                st.warning(f"🟡 Pendente: {row['Vacina']} -- Previsto {row['Previsto']}")
 
         st.dataframe(df_v, use_container_width=True)
 
@@ -1642,7 +1642,7 @@ with tab3:
     else:
         df_p = pd.DataFrame(pendentes,
                             columns=["ID","Lote ID","Lote","Vacina","Previsto","Status","Obs"])
-        opcoes_v = {f"{r['Vacina']} — {r['Lote']} (prev. {r['Previsto']})": r["ID"]
+        opcoes_v = {f"{r['Vacina']} -- {r['Lote']} (prev. {r['Previsto']})": r["ID"]
                     for _, r in df_p.iterrows()}
         with st.form("form_real"):
             sel = st.selectbox("Vacina", list(opcoes_v.keys()))
@@ -1673,7 +1673,7 @@ with tab1:
         st.error(f"🚨 {len(criticos)} medicamento(s) em alerta de estoque ou validade:")
         for m in criticos:
             motivo = "estoque baixo" if m[3] <= m[4] else f"vence em {m[5]}"
-            st.warning(f"⚠️ {m[1]} — {m[3]:.1f} {m[2]} ({motivo})")
+            st.warning(f"⚠️ {m[1]} -- {m[3]:.1f} {m[2]} ({motivo})")
 
     if meds:
         df_m = pd.DataFrame(meds,
@@ -1726,7 +1726,7 @@ with tab3:
             lote_sel = st.selectbox("Lote", list(dict_l.keys()))
             animais  = listar_animais_por_lote(dict_l[lote_sel])
             dict_a   = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-            anim_sel = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["—"])
+            anim_sel = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["--"])
             qtd_uso  = st.number_input("Quantidade utilizada", 0.01, step=0.5)
             data_uso = st.date_input("Data")
             if st.form_submit_button("Registrar Uso") and dict_a:
@@ -1775,11 +1775,11 @@ with tab1:
                 dados.append({
                     "Animal": a[1],
                     "Tipo": r[3],
-                    "Data Cio": r[2] or "—",
-                    "Diagnóstico": r[4] or "—",
+                    "Data Cio": r[2] or "--",
+                    "Diagnóstico": r[4] or "--",
                     "Resultado": r[5],
-                    "Parto Previsto": r[6] or "—",
-                    "Parto Real": r[7] or "—",
+                    "Parto Previsto": r[6] or "--",
+                    "Parto Real": r[7] or "--",
                 })
         if dados:
             st.dataframe(pd.DataFrame(dados), use_container_width=True)
@@ -1796,7 +1796,7 @@ with tab2:
             lote_s = st.selectbox("Lote", list(dict_l.keys()))
             animais = listar_animais_por_lote(dict_l[lote_s])
             dict_a  = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-            anim_s  = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["—"])
+            anim_s  = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["--"])
             tipo_c  = st.selectbox("Tipo de cobertura", ["IATF","Monta Natural","TE"])
             data_cio = st.date_input("Data do cio / IATF")
             obs_r    = st.text_area("Observação")
@@ -1952,7 +1952,7 @@ ocorrencias_dict = {a[0]: listar_ocorrencias(a[0]) for a in animais}
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📊 Excel — Dados do Lote")
+    st.subheader("📊 Excel -- Dados do Lote")
     st.write("Abas: Resumo, Animais, Pesagens, Ocorrências")
     if st.button("Gerar Excel"):
         xls = gerar_excel_lote(nome_lote, animais, pesagens_dict, ocorrencias_dict)
@@ -1964,7 +1964,7 @@ with col1:
         )
 
 with col2:
-    st.subheader("📋 PDF — Relatório do Lote")
+    st.subheader("📋 PDF -- Relatório do Lote")
     st.write("Resumo + tabelas de animais, pesagens e ocorrências")
     if st.button("Gerar PDF"):
         df_anim = pd.DataFrame(animais, columns=["ID","Identificação","Idade","Lote ID"])
@@ -1983,7 +1983,7 @@ with col2:
             {"titulo": "Histórico de pesagens", "df": df_peso},
             {"titulo": "Ocorrências registradas", "df": df_oc},
         ]
-        pdf = gerar_pdf_relatorio(f"Relatório — {nome_lote}", secoes)
+        pdf = gerar_pdf_relatorio(f"Relatório -- {nome_lote}", secoes)
         st.download_button(
             label="⬇️ Baixar PDF",
             data=pdf,
@@ -1993,7 +1993,7 @@ with col2:
         )
 
 st.divider()
-st.subheader("💊 Excel — Calendário Sanitário e Medicamentos")
+st.subheader("💊 Excel -- Calendário Sanitário e Medicamentos")
 if st.button("Gerar Excel Sanitário"):
     vacinas = listar_vacinas_agenda()
     meds    = listar_medicamentos()
@@ -2138,7 +2138,7 @@ if resultados:
         if r["Dias Restantes"] == 0:
             st.success(f"✅ {r['Animal']}: já atingiu o peso alvo!")
         elif r["Dias Restantes"] <= 15:
-            st.warning(f"🟡 {r['Animal']}: {r['Dias Restantes']} dias — prepare o abate")
+            st.warning(f"🟡 {r['Animal']}: {r['Dias Restantes']} dias -- prepare o abate")
         elif r["Confiança"] == "baixa":
             st.info(f"ℹ️ {r['Animal']}: previsão com baixa confiança (poucas pesagens)")
 
@@ -2216,7 +2216,7 @@ with tab1:
             c2.metric("Dias restantes", prev["dias_restantes"])
             c3.metric("Data prevista", prev["data_prevista"])
             if prev["confianca"] == "baixa":
-                st.caption("⚠️ Confiança baixa — registre mais pesagens para melhorar a previsão.")
+                st.caption("⚠️ Confiança baixa -- registre mais pesagens para melhorar a previsão.")
 
 with tab2:
     pesagens = listar_pesagens(animal_id)
@@ -2415,16 +2415,16 @@ with col_alert:
     if pendentes:
         with st.expander(f"💉 {len(pendentes)} vacina(s) pendente(s)", expanded=True):
             for v in pendentes[:5]:
-                st.caption(f"• **{v[3]}** — Lote: {v[2]} — Previsto: {v[4]}")
+                st.caption(f"• **{v[3]}** -- Lote: {v[2]} -- Previsto: {v[4]}")
     if criticos:
         with st.expander(f"💊 {len(criticos)} medicamento(s) em alerta", expanded=True):
             for m in criticos[:5]:
                 motivo = "estoque baixo" if m[3] <= m[4] else f"vence {m[5]}"
-                st.caption(f"• **{m[1]}** — {m[3]:.0f} {m[2]} ({motivo})")
+                st.caption(f"• **{m[1]}** -- {m[3]:.0f} {m[2]} ({motivo})")
     if partos:
         with st.expander(f"🐄 {len(partos)} parto(s) previsto(s)"):
             for p in partos[:5]:
-                st.caption(f"• **{p[1]}** — Lote: {p[2]} — {p[3]}")
+                st.caption(f"• **{p[1]}** -- Lote: {p[2]} -- {p[3]}")
 
 st.divider()
 
@@ -2485,14 +2485,14 @@ if encontrados:
 st.success(f”{len(encontrados)} animal(is) encontrado(s)”)
 for a in encontrados:
 lote = obter_lote(a[3])
-nome_lote = lote[1] if lote else “—”
-with st.expander(f”🐄 {a[1]} — Lote: {nome_lote}”):
+nome_lote = lote[1] if lote else “–”
+with st.expander(f”🐄 {a[1]} – Lote: {nome_lote}”):
 det = obter_animal(a[0])
 col1, col2 = st.columns(2)
 with col1:
 st.write(f”**ID:** {a[0]}”)
 st.write(f”**Idade:** {a[2]} meses”)
-st.write(f”**Raça:** {det[5] if det else ‘—’}”)
+st.write(f”**Raça:** {det[5] if det else ‘–’}”)
 st.write(f”**Peso alvo:** {det[7] if det else 0} kg”)
 with col2:
 ocs = listar_ocorrencias(a[0])
@@ -2571,7 +2571,7 @@ with tab2:
                                     causa, desc_m, custo_p)
                     registrar_auditoria(u["id"], "morte_animal",
                                         "animais", dict_a_m[anim_sel],
-                                        f"{anim_sel} — {causa}")
+                                        f"{anim_sel} -- {causa}")
                     st.success("Morte registrada e animal baixado do lote.")
                     st.rerun()
 ```
@@ -2696,7 +2696,7 @@ with tab2:
 # ===========================================================================
 
 elif menu == “Cotação Cepea”:
-_page_header(“📈”, “Cotação Cepea”, “Preço do boi gordo — ESALQ/Cepea”)
+_page_header(“📈”, “Cotação Cepea”, “Preço do boi gordo – ESALQ/Cepea”)
 
 ```
 col1, col2 = st.columns([2,1])
@@ -2707,7 +2707,7 @@ with col1:
             res = buscar_cotacao_cepea()
         if res["sucesso"]:
             salvar_cotacao(res["data"], res["preco"], res["fonte"])
-            st.success(f"✅ R$ {res['preco']:.2f}/@ — {res['data']}")
+            st.success(f"✅ R$ {res['preco']:.2f}/@ -- {res['data']}")
         else:
             st.warning(f"Cepea indisponível: {res['msg']}")
 
@@ -2743,7 +2743,7 @@ else:
 # ===========================================================================
 
 elif menu == “Score de Saúde”:
-_page_header(“💯”, “Score de Saúde”, “Ranking 0–100 por animal (GMD + ocorrências + reprodução)”)
+_page_header(“💯”, “Score de Saúde”, “Ranking 0-100 por animal (GMD + ocorrências + reprodução)”)
 
 ```
 lotes = listar_lotes()
@@ -2793,11 +2793,11 @@ st.bar_chart(df_sc.set_index("Animal")["Score"])
 st.subheader("🚨 Alertas")
 for _, row in df_sc.iterrows():
     if row["Score"] < 40:
-        st.error(f"🔴 {row['Animal']}: Score {row['Score']} — CRÍTICO")
+        st.error(f"🔴 {row['Animal']}: Score {row['Score']} -- CRÍTICO")
     elif row["Score"] < 60:
-        st.warning(f"🟡 {row['Animal']}: Score {row['Score']} — Regular")
+        st.warning(f"🟡 {row['Animal']}: Score {row['Score']} -- Regular")
     if row["Em Carência"] == "⚠️ Sim":
-        st.warning(f"💊 {row['Animal']}: em período de carência — verificar liberação para abate")
+        st.warning(f"💊 {row['Animal']}: em período de carência -- verificar liberação para abate")
 ```
 
 # ===========================================================================
@@ -2839,7 +2839,7 @@ with tab1:
                   delta_color=cor)
 
         if mg["venda_registrada"]:
-            st.success(f"🏭 Frigorífico: {mg['frigorific']} — Venda: {mg['data_venda']}")
+            st.success(f"🏭 Frigorífico: {mg['frigorific']} -- Venda: {mg['data_venda']}")
 
         # Histórico de vendas
         vendas = listar_vendas_lote(lote_id)
@@ -2929,7 +2929,7 @@ with tab3:
             aid_s  = dict_a[anim_s]
             sb = obter_sisbov(aid_s)
             if sb:
-                st.success(f"✅ SISBOV cadastrado: **{sb[2]}** — {sb[3]}")
+                st.success(f"✅ SISBOV cadastrado: **{sb[2]}** -- {sb[3]}")
             else:
                 st.info("Animal sem SISBOV cadastrado.")
             with st.form("form_sisbov"):
@@ -3061,9 +3061,9 @@ if pontos:
               delta=f"{delta:+.3f} vs início")
 
     if delta < -0.1:
-        st.error("🔴 GMD em queda — revisar nutrição e saúde do lote")
+        st.error("🔴 GMD em queda -- revisar nutrição e saúde do lote")
     elif delta > 0.1:
-        st.success("✅ GMD em melhora — manejo eficaz")
+        st.success("✅ GMD em melhora -- manejo eficaz")
     else:
         st.info("📊 GMD estável")
 else:
@@ -3090,7 +3090,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("📦 Download ZIP (CSVs)")
     st.write("Exporta todas as tabelas em formato CSV dentro de um arquivo ZIP.")
-    # Gera o backup direto — sem step intermediário de button
+    # Gera o backup direto -- sem step intermediário de button
     if not _BACKUP_OK:
         st.error("backup.py não encontrado no repositório.")
     else:
@@ -3108,7 +3108,7 @@ with col1:
 
 with col2:
     st.subheader("🗄️ Download SQLite")
-    st.write("Cópia fiel do banco — pode ser restaurada diretamente.")
+    st.write("Cópia fiel do banco -- pode ser restaurada diretamente.")
     if not _BACKUP_OK:
         st.error("backup.py não encontrado no repositório.")
     else:
