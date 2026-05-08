@@ -1,10 +1,3 @@
-‘’’
-backup.py – Backup automático do banco de dados.
-
-Exporta todas as tabelas em um arquivo ZIP com CSVs.
-Pode ser enviado por e-mail ou disponibilizado para download.
-‘’’
-
 import io
 import csv
 import sqlite3
