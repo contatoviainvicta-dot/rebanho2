@@ -1,11 +1,11 @@
-“””
+“‘’’
 exports.py – Exportação de relatórios PDF e Excel.
 
 Funções:
 gerar_excel_lote(lote_id, animais, pesagens_dict, ocorrencias_dict) -> bytes
 gerar_pdf_relatorio(titulo, secoes) -> bytes
 onde secoes = [{“titulo”: str, “df”: pd.DataFrame}, …]
-“””
+‘’’
 
 import io
 import csv
@@ -61,7 +61,7 @@ pass
 ws.column_dimensions[col_letter].width = min(max_len + 4, 40)
 
 def _excel_fallback_csv(tabelas: dict) -> bytes:
-“”“Fallback: CSV multi-seção quando openpyxl não está disponível.”””
+‘’‘Fallback: CSV multi-seção quando openpyxl não está disponível.’’’
 buf = io.StringIO()
 w = csv.writer(buf)
 for nome, linhas in tabelas.items():
@@ -73,7 +73,7 @@ return buf.getvalue().encode(“utf-8-sig”)
 
 def gerar_excel_lote(nome_lote: str, animais: list, pesagens_dict: dict,
 ocorrencias_dict: dict) -> bytes:
-“””
+‘’’
 Gera um arquivo Excel com abas: Resumo, Animais, Pesagens, Ocorrências.
 
 ```
@@ -82,7 +82,7 @@ Parâmetros:
   pesagens_dict    → {animal_id: [(id, animal_id, peso, data), ...]}
   ocorrencias_dict → {animal_id: [(id, animal_id, data, tipo, desc,
                                    grav, custo, dias, status), ...]}
-"""
+'''
 if not _OPENPYXL:
     todos_pesos = [p for ps in pesagens_dict.values() for p in ps]
     todos_oc    = [o for ocs in ocorrencias_dict.values() for o in ocs]
@@ -182,7 +182,7 @@ return buf.getvalue()
 ```
 
 def gerar_excel_sanitario(vacinas: list, medicamentos: list) -> bytes:
-“”“Excel com abas de agenda sanitária e estoque de medicamentos.”””
+‘’‘Excel com abas de agenda sanitária e estoque de medicamentos.’’’
 if not _OPENPYXL:
 return _excel_fallback_csv({
 “Vacinas”:      [(“ID”,“Lote ID”,“Vacina”,“Previsto”,“Realizado”,“Status”,“Obs”)] + list(vacinas),
@@ -225,13 +225,13 @@ return buf.getvalue()
 # —————————————————————————
 
 def _sanitizar_texto(val) -> str:
-“”“Limpa texto para o PDF: remove caracteres problemáticos.”””
+‘’‘Limpa texto para o PDF: remove caracteres problemáticos.’’’
 texto = str(val) if val is not None else “”
 # substituir caracteres que causam erro em algumas versões do ReportLab
 return texto.replace(”\x00”, “”).strip()
 
 def gerar_pdf_relatorio(titulo: str, secoes: list) -> bytes:
-“””
+‘’’
 Gera PDF com título e uma ou mais seções, cada uma com um DataFrame.
 
 ```
@@ -241,7 +241,7 @@ secoes = [
 ]
 Retorna bytes do PDF válido (começa com %PDF-).
 Se reportlab não estiver disponível, retorna CSV como fallback.
-"""
+'''
 if not _REPORTLAB:
     return _pdf_fallback(titulo, secoes)
 
@@ -332,7 +332,7 @@ except Exception as e:
 ```
 
 def _pdf_fallback(titulo: str, secoes: list) -> bytes:
-“”“PDF mínimo em texto puro quando reportlab não está disponível.”””
+‘’‘PDF mínimo em texto puro quando reportlab não está disponível.’’’
 linhas = [f”% {titulo}”, f”% {datetime.now().strftime(’%d/%m/%Y %H:%M’)}”, “”]
 for sec in secoes:
 linhas.append(f”## {sec[‘titulo’]}”)
