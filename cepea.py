@@ -1,9 +1,9 @@
-“””
+‘’’
 cepea.py – Cotação automática do boi gordo via Cepea / ESALQ.
 
 Tenta buscar o preço atual do boi gordo pelo indicador CEPEA/ESALQ.
 Faz fallback gracioso se não conseguir conectar (offline, timeout, etc.).
-“””
+‘’’
 
 import re
 from datetime import date, datetime
@@ -25,10 +25,10 @@ _RE_PRECO = re.compile(r’R$\s*([\d]+[,.][\d]+)’, re.IGNORECASE)
 _RE_PRECO2 = re.compile(r’indicador.*?([\d]{2,3}[,.][\d]{2})’, re.IGNORECASE | re.DOTALL)
 
 def buscar_cotacao_cepea(timeout: int = 8) -> dict:
-“””
+‘’’
 Tenta buscar a cotação atual do boi gordo no Cepea.
 Retorna dict com: preco (float), data (str), fonte (str), sucesso (bool), msg (str)
-“””
+‘’’
 if not _URLLIB:
 return _fallback(“urllib indisponível”)
 
@@ -64,7 +64,7 @@ except Exception as e:
 ```
 
 def _extrair_preco(html: str) -> Optional[float]:
-“”“Tenta extrair o preço do HTML do Cepea.”””
+‘’‘Tenta extrair o preço do HTML do Cepea.’’’
 # Tenta padrões diferentes
 for pattern in [
 r’R$\s*([\d]{2,3}[,.][\d]{2})’,
@@ -85,10 +85,10 @@ return dict(preco=0.0, data=str(date.today()),
 fonte=“indisponivel”, sucesso=False, msg=msg)
 
 def cotacao_com_cache(database_module) -> dict:
-“””
+‘’’
 Retorna cotação do dia. Usa cache do banco se já buscou hoje.
 Se não encontrar, tenta Cepea. Se falhar, retorna última conhecida.
-“””
+‘’’
 hoje = str(date.today())
 
 ```
@@ -118,10 +118,10 @@ return resultado  # sem dados
 ```
 
 def historico_grafico(cotacoes: list) -> dict:
-“””
+‘’’
 Converte lista de tuplas (id, data, preco, fonte) em
 dict {datas: […], precos: […]} para plotar.
-“””
+‘’’
 if not cotacoes:
 return dict(datas=[], precos=[])
 return dict(
