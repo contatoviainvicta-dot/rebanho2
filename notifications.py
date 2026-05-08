@@ -1,4 +1,4 @@
-“””
+‘’’
 notifications.py – Envio de alertas por e-mail.
 
 Configuração via st.secrets (secrets.toml) ou variáveis de ambiente:
@@ -11,7 +11,7 @@ remetente     = “Sistema Pecuário [seu@gmail.com](mailto:seu@gmail.com)”
 
 Para Gmail: use uma “Senha de app” (não a senha da conta).
 Docs: https://support.google.com/accounts/answer/185833
-“””
+‘’’
 
 import smtplib
 import ssl
@@ -40,10 +40,10 @@ return os.environ.get(f”EMAIL*{key.upper()}”, fallback)
 # —————————————————————————
 
 def _enviar(destinatario: str, assunto: str, corpo_html: str) -> tuple[bool, str]:
-“””
+‘’’
 Envia e-mail. Retorna (sucesso: bool, mensagem: str).
 Silencia falhas para não derrubar o app se e-mail não estiver configurado.
-“””
+‘’’
 host = _cfg(“smtp_host”, “smtp.gmail.com”)
 port = int(_cfg(“smtp_port”, “587”))
 user = _cfg(“smtp_user”, “”)
@@ -83,7 +83,7 @@ except OSError as e:
 # —————————————————————————
 
 def _template(titulo: str, corpo: str, cor: str = “#1F5C2E”) -> str:
-return f”””
+return f’’’
 <html><body style="font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:24px">
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;
 box-shadow:0 2px 8px rgba(0,0,0,.08)">
@@ -98,7 +98,7 @@ box-shadow:0 2px 8px rgba(0,0,0,.08)">
 Mensagem automática – não responda a este e-mail.
 </div>
 </div></body></html>
-“””
+‘’’
 
 # —————————————————————————
 
@@ -107,7 +107,7 @@ Mensagem automática – não responda a este e-mail.
 # —————————————————————————
 
 def email_boas_vindas(destinatario: str, nome: str, dias_trial: int = 30) -> tuple[bool, str]:
-corpo = f”””
+corpo = f’’’
 <p>Olá, <strong>{nome}</strong>! 👋</p>
 <p>Seu acesso ao <strong>Sistema de Gestão Pecuária</strong> foi criado com sucesso.</p>
 <p>Você tem <strong>{dias_trial} dias de teste gratuito</strong> com acesso completo a todos os módulos.</p>
@@ -119,7 +119,7 @@ corpo = f”””
 </ul>
 <p>Qualquer dúvida, responda este e-mail.</p>
 <p>Bom trabalho! 🐄</p>
-“””
+‘’’
 return _enviar(destinatario,
 “✅ Bem-vindo ao Sistema de Gestão Pecuária”,
 _template(“Acesso criado com sucesso”, corpo))
@@ -127,7 +127,7 @@ _template(“Acesso criado com sucesso”, corpo))
 def email_trial_expirando(destinatario: str, nome: str,
 dias_restantes: int) -> tuple[bool, str]:
 cor = “#C8740A” if dias_restantes > 3 else “#A32D2D”
-corpo = f”””
+corpo = f’’’
 <p>Olá, <strong>{nome}</strong>!</p>
 <p>Seu período de teste gratuito expira em <strong>{dias_restantes} dia(s)</strong>
 ({date.today().strftime(’%d/%m/%Y’)}).</p>
@@ -142,13 +142,13 @@ Quero assinar agora
 <p style="font-size:12px;color:#888">
 Após a expiração seus dados ficam disponíveis por mais 15 dias em modo somente leitura.
 </p>
-“””
+‘’’
 return _enviar(destinatario,
 f”⚠️ Seu trial expira em {dias_restantes} dia(s)”,
 _template(“Aviso de expiração do trial”, corpo, cor))
 
 def email_trial_expirado(destinatario: str, nome: str) -> tuple[bool, str]:
-corpo = f”””
+corpo = f’’’
 <p>Olá, <strong>{nome}</strong>.</p>
 <p>Seu período de teste gratuito <strong>encerrou hoje</strong>.</p>
 <p>Seus dados estão preservados por mais <strong>15 dias</strong>.
@@ -160,89 +160,89 @@ text-decoration:none;font-weight:600;font-size:15px">
 Reativar minha conta
 </a>
 </div>
-“””
+‘’’
 return _enviar(destinatario,
 “🔴 Trial encerrado – reative sua conta”,
 _template(“Trial encerrado”, corpo, “#A32D2D”))
 
 def email_vacina_pendente(destinatario: str, nome: str,
 vacinas: list) -> tuple[bool, str]:
-“”“vacinas = lista de dicts com chaves: lote, vacina, data_prevista”””
+‘’‘vacinas = lista de dicts com chaves: lote, vacina, data_prevista’’’
 itens = “”.join(
 f”<li><strong>{v.get(‘vacina’,’–’)}</strong> – Lote: {v.get(‘lote’,’–’)}”
 f” – Previsto: {v.get(‘data_prevista’,’–’)}</li>”
 for v in vacinas
 )
-corpo = f”””
+corpo = f’’’
 <p>Olá, <strong>{nome}</strong>!</p>
 <p>Há <strong>{len(vacinas)} vacina(s) pendente(s)</strong> no sistema:</p>
 <ul style="background:#FFF8E1;padding:16px 16px 16px 32px;border-radius:6px">
 {itens}
 </ul>
 <p>Acesse o <strong>Calendário Sanitário</strong> para confirmar a realização.</p>
-“””
+‘’’
 return _enviar(destinatario,
 f”💉 {len(vacinas)} vacina(s) pendente(s) no sistema”,
 _template(“Alerta de Calendário Sanitário”, corpo, “#C8740A”))
 
 def email_medicamento_critico(destinatario: str, nome: str,
 medicamentos: list) -> tuple[bool, str]:
-“”“medicamentos = lista de dicts: nome, estoque_atual, unidade, validade”””
+‘’‘medicamentos = lista de dicts: nome, estoque_atual, unidade, validade’’’
 itens = “”.join(
 f”<li><strong>{m.get(‘nome’,’–’)}</strong> – “
 f”Estoque: {m.get(‘estoque_atual’,0):.1f} {m.get(‘unidade’,’’)}”
 f”{’ – Vence: ‘+m.get(‘validade’,’’) if m.get(‘validade’) else ‘’}</li>”
 for m in medicamentos
 )
-corpo = f”””
+corpo = f’’’
 <p>Olá, <strong>{nome}</strong>!</p>
 <p>Os seguintes medicamentos precisam de atenção:</p>
 <ul style="background:#FFEBEE;padding:16px 16px 16px 32px;border-radius:6px">
 {itens}
 </ul>
 <p>Acesse o <strong>Estoque de Medicamentos</strong> para repor ou descartar itens vencidos.</p>
-“””
+‘’’
 return _enviar(destinatario,
 f”💊 {len(medicamentos)} medicamento(s) em alerta”,
 _template(“Alerta de Estoque”, corpo, “#A32D2D”))
 
 def email_parto_previsto(destinatario: str, nome: str,
 partos: list) -> tuple[bool, str]:
-“”“partos = lista de dicts: animal, lote, data_parto_previsto”””
+‘’‘partos = lista de dicts: animal, lote, data_parto_previsto’’’
 itens = “”.join(
 f”<li><strong>{p.get(‘animal’,’–’)}</strong> – Lote: {p.get(‘lote’,’–’)}”
 f” – Previsto: {p.get(‘data_parto_previsto’,’–’)}</li>”
 for p in partos
 )
-corpo = f”””
+corpo = f’’’
 <p>Olá, <strong>{nome}</strong>!</p>
 <p><strong>{len(partos)} parto(s)</strong> estão previstos nos próximos 30 dias:</p>
 <ul style="background:#E8F5E9;padding:16px 16px 16px 32px;border-radius:6px">
 {itens}
 </ul>
 <p>Acesse o <strong>Controle Reprodutivo</strong> para acompanhar.</p>
-“””
+‘’’
 return _enviar(destinatario,
 f”🐄 {len(partos)} parto(s) previstos nos próximos 30 dias”,
 _template(“Alerta Reprodutivo”, corpo))
 
 def email_abate_previsto(destinatario: str, nome: str,
 animais_prontos: list) -> tuple[bool, str]:
-“”“animais_prontos = lista de dicts: animal, lote, peso_atual, peso_alvo, data_prevista”””
+‘’‘animais_prontos = lista de dicts: animal, lote, peso_atual, peso_alvo, data_prevista’’’
 itens = “”.join(
 f”<li><strong>{a.get(‘animal’,’–’)}</strong> – “
 f”{a.get(‘peso_atual’,0):.0f}/{a.get(‘peso_alvo’,0):.0f} kg”
 f” – Abate previsto: {a.get(‘data_prevista’,’–’)}</li>”
 for a in animais_prontos
 )
-corpo = f”””
+corpo = f’’’
 <p>Olá, <strong>{nome}</strong>!</p>
 <p><strong>{len(animais_prontos)} animal(is)</strong> atingirão o peso de abate nos próximos 30 dias:</p>
 <ul style="background:#E3F2FD;padding:16px 16px 16px 32px;border-radius:6px">
 {itens}
 </ul>
 <p>Acesse o <strong>Painel de Decisão</strong> para planejar a saída do lote.</p>
-“””
+‘’’
 return _enviar(destinatario,
 f”🥩 {len(animais_prontos)} animal(is) prontos para abate”,
 _template(“Previsão de Abate”, corpo))
@@ -254,5 +254,5 @@ _template(“Previsão de Abate”, corpo))
 # —————————————————————————
 
 def email_configurado() -> bool:
-“”“Retorna True se as credenciais SMTP estão presentes.”””
+‘’‘Retorna True se as credenciais SMTP estão presentes.’’’
 return bool(_cfg(“smtp_user”) and _cfg(“smtp_password”))
