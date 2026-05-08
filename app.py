@@ -89,9 +89,20 @@ from database import (
     calcular_gmd_temporal,
     importar_pesagens_csv, importar_animais_csv,
     verificar_carencia,
+    atualizar_qtd_lote, resumo_lote,
 )
 
 inicializar_banco()
+
+# ---------------------------------------------------------------------------
+# Configuração da página
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Gestão Pecuária",
+    page_icon="🐄",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 # ===========================================================================
 # AUTENTICAÇÃO
@@ -141,91 +152,179 @@ if st.session_state.usuario is None:
 # SIDEBAR — usuário logado
 # ---------------------------------------------------------------------------
 u = st.session_state.usuario
-st.sidebar.markdown(f"👤 **{u['nome']}**  \n*{u['perfil']}*")
-if st.sidebar.button("Sair"):
-    st.session_state.usuario = None
-    st.rerun()
 
-# --- Banner de trial na sidebar ---
+# --- Cabeçalho do usuário ---
+with st.sidebar:
+    col_icon, col_info = st.columns([1, 3])
+    with col_icon:
+        perfil_emoji = {"admin": "⚙️", "veterinario": "🩺", "fazendeiro": "🌾"}.get(u["perfil"], "👤")
+        st.markdown(f"<div style='font-size:28px;padding-top:4px'>{perfil_emoji}</div>",
+                    unsafe_allow_html=True)
+    with col_info:
+        st.markdown(f"**{u['nome']}**")
+        st.caption(u["perfil"].capitalize())
+    if st.button("🚪 Sair", use_container_width=True):
+        st.session_state.usuario = None
+        st.rerun()
+
+# --- Banner de trial ---
 _status_plano = obter_status_plano(u["id"])
-if _status_plano["plano"] == "trial":
-    _dr = _status_plano["dias_restantes"]
-    if _dr <= 3:
-        st.sidebar.error(f"🔴 Trial: {_dr} dia(s) restante(s)!")
-    elif _dr <= 7:
-        st.sidebar.warning(f"⚠️ Trial: {_dr} dias restantes")
+with st.sidebar:
+    if _status_plano["plano"] == "trial":
+        _dr = _status_plano["dias_restantes"]
+        if _dr <= 3:
+            st.error(f"🔴 Trial: {_dr} dia(s) restante(s)!")
+        elif _dr <= 7:
+            st.warning(f"⚠️ Trial expira em {_dr} dias")
+            if email_configurado():
+                email_trial_expirando(u["email"], u["nome"], _dr)
+        else:
+            pct = int((_dr / 30) * 100)
+            st.progress(pct / 100, text=f"🕐 Trial: {_dr}/30 dias")
+    elif _status_plano["plano"] == "expirado":
+        st.error("🔴 Trial expirado")
         if email_configurado():
-            email_trial_expirando(u["email"], u["nome"], _dr)
+            email_trial_expirado(u["email"], u["nome"])
     else:
-        st.sidebar.info(f"🕐 Trial: {_dr} dias restantes")
-elif _status_plano["plano"] == "expirado":
-    st.sidebar.error("🔴 Trial expirado — somente leitura")
-    if email_configurado():
-        email_trial_expirado(u["email"], u["nome"])
-else:
-    st.sidebar.success("✅ Plano ativo")
+        st.success("✅ Plano ativo")
 
-st.sidebar.divider()
-
-# Alertas rápidos na sidebar
+# --- Alertas rápidos compactos ---
 _pendentes = listar_vacinas_pendentes()
 _criticos  = listar_medicamentos_criticos()
 _partos    = listar_partos_previstos()
-if _pendentes:
-    st.sidebar.warning(f"💉 {len(_pendentes)} vacina(s) pendente(s)")
-if _criticos:
-    st.sidebar.error(f"💊 {len(_criticos)} medicamento(s) em alerta")
-if _partos:
-    st.sidebar.info(f"🐄 {len(_partos)} parto(s) previstos em 30 dias")
+with st.sidebar:
+    alertas = []
+    if _pendentes: alertas.append(f"💉 {len(_pendentes)} vacina(s)")
+    if _criticos:  alertas.append(f"💊 {len(_criticos)} med. crítico(s)")
+    if _partos:    alertas.append(f"🐄 {len(_partos)} parto(s) em 30d")
+    if alertas:
+        st.warning("**Alertas:** " + " · ".join(alertas))
 
 st.sidebar.divider()
 
+# --- MENU REORGANIZADO EM GRUPOS ---
+with st.sidebar:
+    st.caption("NAVEGAÇÃO")
+
 menu = st.sidebar.selectbox(
-    "Menu",
+    "Ir para",
     [
-        # ── originais ──────────────────────────────
-        "Cadastrar Lote",
-        "Dashboard Sanitário",
-        "Cadastrar Animal",
-        "Registrar Pesagem",
-        "Analisar por Lote",
-        "Analisar Animal",
-        "Ocorrências Adversas",
-        "Painel de Decisão",
-        "Pesquisar Ocorrências",
-        "Dashboard Executivo",
-        # ── novos ──────────────────────────────────
-        "── Novos Módulos ──",
-        "Calendário Sanitário",
-        "Estoque de Medicamentos",
-        "Controle Reprodutivo",
-        "Mapa de Piquetes",
-        "Exportar Relatórios",
-        "Previsão de Abate",
-        "Prontuário do Animal",
-        "Notificações",
-        "── Avançado ──",
-        "Home Dashboard",
-        "Busca de Animal",
-        "Mortalidade",
-        "Importar Dados",
-        "Cotação Cepea",
-        "Score de Saúde",
-        "Margem Real do Lote",
-        "Rastreabilidade GTA",
-        "Comparativo de Lotes",
-        "GMD ao Longo do Tempo",
-        "Backup do Sistema",
-        "Log de Auditoria",
-        "Administração",
+        # ── INÍCIO ─────────────────────────────────
+        "🏠  Início",
+        "🔍  Buscar Animal",
+        # ── CADASTROS ──────────────────────────────
+        "─── Cadastros ───",
+        "📦  Cadastrar Lote",
+        "🐄  Cadastrar Animal",
+        "⚖️  Registrar Pesagem",
+        "🚨  Registrar Ocorrência",
+        "💀  Registrar Morte",
+        "📥  Importar Dados (CSV)",
+        # ── ANÁLISE ────────────────────────────────
+        "─── Análise ───",
+        "📊  Dashboard Sanitário",
+        "📈  Analisar por Lote",
+        "🐄  Analisar Animal",
+        "💯  Score de Saúde",
+        "📉  GMD ao Longo do Tempo",
+        "🔀  Comparativo de Lotes",
+        "💰  Painel de Decisão",
+        "📊  Dashboard Executivo",
+        "🔎  Pesquisar Ocorrências",
+        # ── GESTÃO ─────────────────────────────────
+        "─── Gestão ───",
+        "💉  Calendário Sanitário",
+        "💊  Estoque de Medicamentos",
+        "🐄  Controle Reprodutivo",
+        "🌿  Mapa de Piquetes",
+        "🥩  Previsão de Abate",
+        "📋  Prontuário do Animal",
+        "💰  Margem Real do Lote",
+        "📈  Cotação Cepea",
+        # ── RASTREABILIDADE ────────────────────────
+        "─── Rastreabilidade ───",
+        "📄  Rastreabilidade GTA",
+        # ── RELATÓRIOS ─────────────────────────────
+        "─── Relatórios ───",
+        "📄  Exportar Relatórios",
+        "💾  Backup do Sistema",
+        # ── SISTEMA ────────────────────────────────
+        "─── Sistema ───",
+        "📧  Notificações",
+        "📜  Log de Auditoria",
+        "⚙️  Administração",
     ],
+    label_visibility="collapsed",
 )
+
+# Navegação programática (ações rápidas do Home)
+if "_nav" in st.session_state and st.session_state["_nav"]:
+    _destino = st.session_state.pop("_nav")
+    # Encontrar a chave do menu_map que aponta para o destino
+    _chave = next((k for k, v in _menu_map.items() if v == _destino), None)
+    if _chave:
+        st.session_state["_menu_key"] = _chave
+
+# Normalizar menu: remover emoji + espaços para manter compatibilidade
+import re as _re
+_menu_map = {
+    "🏠  Início":                   "Home Dashboard",
+    "🔍  Buscar Animal":             "Busca de Animal",
+    "📦  Cadastrar Lote":            "Cadastrar Lote",
+    "🐄  Cadastrar Animal":          "Cadastrar Animal",
+    "⚖️  Registrar Pesagem":         "Registrar Pesagem",
+    "🚨  Registrar Ocorrência":      "Ocorrências Adversas",
+    "💀  Registrar Morte":           "Mortalidade",
+    "📥  Importar Dados (CSV)":      "Importar Dados",
+    "📊  Dashboard Sanitário":       "Dashboard Sanitário",
+    "📈  Analisar por Lote":         "Analisar por Lote",
+    "🐄  Analisar Animal":           "Analisar Animal",
+    "💯  Score de Saúde":            "Score de Saúde",
+    "📉  GMD ao Longo do Tempo":     "GMD ao Longo do Tempo",
+    "🔀  Comparativo de Lotes":      "Comparativo de Lotes",
+    "💰  Painel de Decisão":         "Painel de Decisão",
+    "📊  Dashboard Executivo":       "Dashboard Executivo",
+    "🔎  Pesquisar Ocorrências":     "Pesquisar Ocorrências",
+    "💉  Calendário Sanitário":      "Calendário Sanitário",
+    "💊  Estoque de Medicamentos":   "Estoque de Medicamentos",
+    "🐄  Controle Reprodutivo":      "Controle Reprodutivo",
+    "🌿  Mapa de Piquetes":          "Mapa de Piquetes",
+    "🥩  Previsão de Abate":         "Previsão de Abate",
+    "📋  Prontuário do Animal":      "Prontuário do Animal",
+    "💰  Margem Real do Lote":       "Margem Real do Lote",
+    "📈  Cotação Cepea":             "Cotação Cepea",
+    "📄  Rastreabilidade GTA":       "Rastreabilidade GTA",
+    "📄  Exportar Relatórios":       "Exportar Relatórios",
+    "💾  Backup do Sistema":         "Backup do Sistema",
+    "📧  Notificações":              "Notificações",
+    "📜  Log de Auditoria":          "Log de Auditoria",
+    "⚙️  Administração":             "Administração",
+}
+# separadores viram None → página em branco
+menu = _menu_map.get(menu, None)
+
+# ---------------------------------------------------------------------------
+# Helper: cabeçalho padronizado de página
+# ---------------------------------------------------------------------------
+def _page_header(icone: str, titulo: str, subtitulo: str = ""):
+    """Renderiza cabeçalho limpo e padronizado em todas as telas."""
+    st.markdown(f"## {icone} {titulo}")
+    if subtitulo:
+        st.caption(subtitulo)
+    st.divider()
+
+# ===========================================================================
+# SEPARADORES (menu=None quando usuário clica num grupo)
+# ===========================================================================
+if menu is None:
+    st.info("👈 Selecione uma opção no menu lateral.")
+    st.stop()
 
 # ===========================================================================
 # CADASTRAR LOTE
 # ===========================================================================
-if menu == "Cadastrar Lote":
-    st.subheader("Novo Lote")
+elif menu == "Cadastrar Lote":
+    _page_header("📦", "Cadastrar Lote", "Registre um novo lote de animais")
 
     nome = st.text_input("Nome do lote")
     descricao = st.text_area("Descrição")
@@ -262,7 +361,7 @@ if menu == "Cadastrar Lote":
 # DASHBOARD SANITÁRIO
 # ===========================================================================
 elif menu == "Dashboard Sanitário":
-    st.subheader("🦠 Dashboard Sanitário")
+    _page_header("🦠", "Dashboard Sanitário", "Incidências, curva epidêmica e alertas")
 
     # --- Seleção de lote ---
     lotes = listar_lotes()
@@ -429,7 +528,7 @@ elif menu == "Dashboard Sanitário":
 # CADASTRAR ANIMAL
 # ===========================================================================
 elif menu == "Cadastrar Animal":
-    st.subheader("Novo Animal")
+    _page_header("🐄", "Cadastrar Animal", "Vincule um animal a um lote")
 
     lotes = listar_lotes()
     if len(lotes) == 0:
@@ -462,7 +561,7 @@ elif menu == "Cadastrar Animal":
 # REGISTRAR PESAGEM
 # ===========================================================================
 elif menu == "Registrar Pesagem":
-    st.subheader("Registrar Peso")
+    _page_header("⚖️", "Registrar Pesagem", "Registre o peso atual de um animal")
 
     lotes = listar_lotes()
     if len(lotes) == 0:
@@ -496,7 +595,7 @@ elif menu == "Registrar Pesagem":
 # ANÁLISE POR LOTE
 # ===========================================================================
 elif menu == "Analisar por Lote":
-    st.subheader("Análise por Lote")
+    _page_header("📈", "Análise por Lote", "Desempenho econômico e zootécnico")
 
     lotes = listar_lotes()
     if len(lotes) == 0:
@@ -508,7 +607,16 @@ elif menu == "Analisar por Lote":
 
         lote = obter_lote(lote_id)
         animais = listar_animais_por_lote(lote_id)
-        st.write(f"🐄 Total: {len(animais)}")
+
+        # --- Resumo consistente do lote ---
+        rs = resumo_lote(lote_id)
+        col_r1, col_r2, col_r3, col_r4, col_r5 = st.columns(5)
+        col_r1.metric("🐄 Animais ativos",   rs["ativos"])
+        col_r2.metric("💀 Mortes",           rs["mortos"])
+        col_r3.metric("📄 GTAs emitidas",    rs["gtas_emitidas"])
+        col_r4.metric("🚨 Ocorrências",      rs["ocorrencias"])
+        col_r5.metric("💉 Vacinas pendentes",rs["vacinas_pendentes"])
+        st.divider()
 
         # --- Parâmetros de custo ---
         st.subheader("💰 Parâmetros de Custo")
@@ -824,7 +932,7 @@ elif menu == "Analisar por Lote":
 # ANÁLISE INDIVIDUAL DO ANIMAL
 # ===========================================================================
 elif menu == "Analisar Animal":
-    st.subheader("🐄 Análise do Animal")
+    _page_header("🐄", "Análise Individual", "Histórico de peso, ocorrências e alertas do animal")
 
     lotes = listar_lotes()
     if len(lotes) == 0:
@@ -918,7 +1026,7 @@ elif menu == "Analisar Animal":
 # OCORRÊNCIAS ADVERSAS
 # ===========================================================================
 elif menu == "Ocorrências Adversas":
-    st.subheader("🚨 Registrar Ocorrência")
+    _page_header("🚨", "Registrar Ocorrência", "Doenças, lesões e medicações")
 
     lotes = listar_lotes()
     if len(lotes) == 0:
@@ -955,7 +1063,7 @@ elif menu == "Ocorrências Adversas":
 # PAINEL DE DECISÃO
 # ===========================================================================
 elif menu == "Painel de Decisão":
-    st.title("📊 Painel de Decisão")
+    _page_header("📊", "Painel de Decisão", "Resultado financeiro por lote")
 
     preco_kg = st.number_input("Preço do kg (R$)", 0.0, 50.0, 10.0)
     custo_diario = st.number_input("Custo diário por animal (R$)", 0.0, 100.0, 10.0)
@@ -1047,7 +1155,7 @@ elif menu == "Painel de Decisão":
 # PESQUISAR OCORRÊNCIAS
 # ===========================================================================
 elif menu == "Pesquisar Ocorrências":
-    st.title("🔎 Pesquisa de Ocorrências")
+    _page_header("🔎", "Pesquisar Ocorrências", "Filtros por lote, tipo e gravidade")
 
     lotes = listar_lotes()
     dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
@@ -1171,7 +1279,7 @@ elif menu == "Pesquisar Ocorrências":
 # DASHBOARD EXECUTIVO
 # ===========================================================================
 elif menu == "Dashboard Executivo":
-    st.title("📊 Dashboard Executivo")
+    _page_header("📊", "Dashboard Executivo", "KPIs consolidados do lote")
 
     preco_kg = st.number_input("Preço do kg (R$)", 0.0, 50.0, 10.0)
     custo_diario = st.number_input("Custo diário por animal (R$)", 0.0, 100.0, 10.0)
@@ -1254,13 +1362,13 @@ elif menu == "Dashboard Executivo":
 # SEPARADOR DE MENU (item não clicável)
 # ===========================================================================
 elif menu == "── Novos Módulos ──":
-    st.info("Selecione um módulo no menu lateral.")
+    pass  # separador obsoleto
 
 # ===========================================================================
 # CALENDÁRIO SANITÁRIO
 # ===========================================================================
 elif menu == "Calendário Sanitário":
-    st.title("💉 Calendário Sanitário")
+    _page_header("💉", "Calendário Sanitário", "Agenda de vacinas e medicações")
 
     tab1, tab2, tab3 = st.tabs(["📋 Agenda", "➕ Agendar Vacina", "✅ Registrar Realização"])
 
@@ -1347,7 +1455,7 @@ elif menu == "Calendário Sanitário":
 # ESTOQUE DE MEDICAMENTOS
 # ===========================================================================
 elif menu == "Estoque de Medicamentos":
-    st.title("💊 Estoque de Medicamentos")
+    _page_header("💊", "Estoque de Medicamentos", "Controle de estoque, validade e uso")
 
     tab1, tab2, tab3 = st.tabs(["📦 Estoque Atual", "➕ Cadastrar", "💉 Registrar Uso"])
 
@@ -1426,7 +1534,7 @@ elif menu == "Estoque de Medicamentos":
 # CONTROLE REPRODUTIVO
 # ===========================================================================
 elif menu == "Controle Reprodutivo":
-    st.title("🐄 Controle Reprodutivo")
+    _page_header("🐄", "Controle Reprodutivo", "IATF, diagnóstico, prenhez e partos")
 
     tab1, tab2, tab3, tab4 = st.tabs(
         ["📊 Indicadores", "➕ Registrar Cobertura", "✏️ Atualizar Diagnóstico", "🗓️ Partos Previstos"]
@@ -1530,7 +1638,7 @@ elif menu == "Controle Reprodutivo":
 # MAPA DE PIQUETES
 # ===========================================================================
 elif menu == "Mapa de Piquetes":
-    st.title("🌿 Mapa de Piquetes e Pastagens")
+    _page_header("🌿", "Mapa de Piquetes", "Alocação de lotes e histórico de ocupação")
 
     tab1, tab2, tab3 = st.tabs(["📋 Piquetes", "➕ Cadastrar", "🔄 Alocar / Liberar"])
 
@@ -1604,7 +1712,7 @@ elif menu == "Mapa de Piquetes":
 # EXPORTAR RELATÓRIOS
 # ===========================================================================
 elif menu == "Exportar Relatórios":
-    st.title("📄 Exportar Relatórios")
+    _page_header("📄", "Exportar Relatórios", "PDF e Excel do lote, sanitário e estoque")
 
     lotes = listar_lotes()
     if not lotes:
@@ -1656,10 +1764,11 @@ elif menu == "Exportar Relatórios":
             ]
             pdf = gerar_pdf_relatorio(f"Relatório — {nome_lote}", secoes)
             st.download_button(
-                "⬇️ Baixar PDF",
-                pdf,
-                f"relatorio_{nome_lote.replace(' ','_')}.pdf",
-                "application/pdf",
+                label="⬇️ Baixar PDF",
+                data=pdf,
+                file_name=f"relatorio_{nome_lote.replace(' ','_')}.pdf",
+                mime="application/pdf",
+                key="dl_pdf_relatorio",
             )
 
     st.divider()
@@ -1679,7 +1788,7 @@ elif menu == "Exportar Relatórios":
 # ADMINISTRAÇÃO
 # ===========================================================================
 elif menu == "Administração":
-    st.title("⚙️ Administração")
+    _page_header("⚙️", "Administração", "Usuários, planos e configurações")
 
     # Só admin vê tudo; outros veem apenas alterar senha
     is_admin = u["perfil"] == "admin"
@@ -1734,7 +1843,7 @@ elif menu == "Administração":
 # PREVISÃO DE ABATE
 # ===========================================================================
 elif menu == "Previsão de Abate":
-    st.title("🥩 Previsão de Abate")
+    _page_header("🥩", "Previsão de Abate", "Data estimada e receita projetada por GMD")
 
     lotes = listar_lotes()
     if not lotes:
@@ -1814,7 +1923,7 @@ elif menu == "Previsão de Abate":
 # PRONTUÁRIO DO ANIMAL
 # ===========================================================================
 elif menu == "Prontuário do Animal":
-    st.title("📋 Prontuário do Animal")
+    _page_header("📋", "Prontuário do Animal", "Histórico completo: peso, saúde e reprodução")
 
     lotes = listar_lotes()
     if not lotes:
@@ -1909,7 +2018,7 @@ elif menu == "Prontuário do Animal":
 # NOTIFICAÇÕES
 # ===========================================================================
 elif menu == "Notificações":
-    st.title("📧 Central de Notificações")
+    _page_header("📧", "Notificações", "Alertas por e-mail e gestão de planos")
 
     if not email_configurado():
         st.warning("⚠️ E-mail não configurado.")
@@ -2004,70 +2113,115 @@ elif menu == "── Avançado ──":
 # HOME DASHBOARD
 # ===========================================================================
 elif menu == "Home Dashboard":
-    st.title("🏠 Painel Geral")
+    # Saudação dinâmica
+    hora = datetime.now().hour
+    saudacao = "Bom dia" if hora < 12 else "Boa tarde" if hora < 18 else "Boa noite"
+    st.markdown(f"## {saudacao}, **{u['nome']}** 👋")
+    st.caption(f"📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    st.divider()
 
-    lotes = listar_lotes()
+    lotes         = listar_lotes()
     animais_todos = listar_animais()
-    pendentes = listar_vacinas_pendentes()
-    criticos  = listar_medicamentos_criticos()
-    partos    = listar_partos_previstos()
+    pendentes     = listar_vacinas_pendentes()
+    criticos      = listar_medicamentos_criticos()
+    partos        = listar_partos_previstos()
 
-    # KPIs
-    col1,col2,col3,col4 = st.columns(4)
-    col1.metric("🐄 Total de lotes",    len(lotes))
-    col2.metric("🐂 Total de animais",  len(animais_todos))
-    col3.metric("💉 Vacinas pendentes", len(pendentes))
-    col4.metric("🐄 Partos em 30 dias", len(partos))
-
-    st.divider()
-
-    # Cotação do dia
-    st.subheader("💰 Cotação Boi Gordo (@)")
-    cot = cotacao_com_cache(__import__('database'))
-    if cot["sucesso"]:
-        st.success(f"R$ {cot['preco']:.2f} / @ — {cot['data']} ({cot['fonte']})")
-    else:
-        st.warning(f"Cotação indisponível: {cot['msg']}")
-        preco_manual = st.number_input("Inserir cotação manualmente (R$/@)", 0.0, 1000.0, 195.0)
-        if st.button("Salvar cotação"):
-            salvar_cotacao(str(date.today()), preco_manual, "manual")
-            st.success("Cotação salva!"); st.rerun()
+    # --- KPIs ---
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("📦 Lotes",            len(lotes))
+    k2.metric("🐄 Animais ativos",   len(animais_todos))
+    k3.metric("💉 Vacinas pendentes",len(pendentes),
+              delta="⚠️" if pendentes else None,
+              delta_color="inverse" if pendentes else "normal")
+    k4.metric("💊 Meds. críticos",   len(criticos),
+              delta="⚠️" if criticos else None,
+              delta_color="inverse" if criticos else "normal")
+    k5.metric("🐄 Partos em 30d",    len(partos))
 
     st.divider()
-    col_a, col_b = st.columns(2)
 
-    with col_a:
-        # Alertas críticos
-        st.subheader("🚨 Alertas do dia")
+    # --- Cotação + Alertas ---
+    col_cot, col_alert = st.columns([1, 2])
+
+    with col_cot:
+        st.subheader("💰 Cotação do dia")
+        import database as _db_cot
+        cot = cotacao_com_cache(_db_cot)
+        if cot["sucesso"]:
+            st.success(f"**R$ {cot['preco']:.2f} /@**")
+            st.caption(f"{cot['data']} · {cot['fonte']}")
+        else:
+            st.warning("Cotação indisponível")
+            with st.form("form_cot_home"):
+                pr_h = st.number_input("R$/@", 0.0, 1000.0, 195.0,
+                                        label_visibility="collapsed")
+                if st.form_submit_button("💾 Salvar cotação"):
+                    salvar_cotacao(str(date.today()), pr_h, "manual")
+                    st.rerun()
+
+    with col_alert:
+        st.subheader("🚨 Alertas")
         if not pendentes and not criticos and not partos:
-            st.success("✅ Nenhum alerta crítico hoje!")
+            st.success("✅ Tudo em ordem! Nenhum alerta crítico hoje.")
         if pendentes:
-            st.error(f"💉 {len(pendentes)} vacina(s) pendente(s)")
-            for v in pendentes[:3]:
-                st.caption(f"• {v[3]} — Lote {v[2]} — Previsto {v[4]}")
+            with st.expander(f"💉 {len(pendentes)} vacina(s) pendente(s)", expanded=True):
+                for v in pendentes[:5]:
+                    st.caption(f"• **{v[3]}** — Lote: {v[2]} — Previsto: {v[4]}")
         if criticos:
-            st.error(f"💊 {len(criticos)} medicamento(s) em alerta")
-            for m in criticos[:3]:
-                st.caption(f"• {m[1]} — estoque {m[3]:.0f} {m[2]}")
+            with st.expander(f"💊 {len(criticos)} medicamento(s) em alerta", expanded=True):
+                for m in criticos[:5]:
+                    motivo = "estoque baixo" if m[3] <= m[4] else f"vence {m[5]}"
+                    st.caption(f"• **{m[1]}** — {m[3]:.0f} {m[2]} ({motivo})")
         if partos:
-            st.warning(f"🐄 {len(partos)} parto(s) em 30 dias")
-            for p in partos[:3]:
-                st.caption(f"• {p[1]} — {p[3]}")
+            with st.expander(f"🐄 {len(partos)} parto(s) previsto(s)"):
+                for p in partos[:5]:
+                    st.caption(f"• **{p[1]}** — Lote: {p[2]} — {p[3]}")
 
-    with col_b:
-        # Resumo por lote
-        st.subheader("📊 Lotes ativos")
-        for l in lotes[:5]:
-            n_anim = contar_animais_no_lote(l[0])
-            st.write(f"**{l[1]}** — {n_anim} animais")
-        if len(lotes) > 5:
-            st.caption(f"... e mais {len(lotes)-5} lote(s)")
+    st.divider()
+
+    # --- Cards de lotes ---
+    st.subheader("📦 Seus lotes")
+    if not lotes:
+        st.info("Nenhum lote cadastrado. Vá em **Cadastros → Cadastrar Lote**.")
+    else:
+        ncols = min(3, len(lotes))
+        cols_lote = st.columns(ncols)
+        for i, l in enumerate(lotes[:6]):
+            rs = resumo_lote(l[0])
+            ico = "🟢" if rs["ativos"] > 0 else "⚫"
+            tags = []
+            if rs["mortos"]:           tags.append(f"💀 {rs['mortos']}")
+            if rs["vacinas_pendentes"]:tags.append(f"💉 {rs['vacinas_pendentes']}")
+            if rs["ocorrencias"]:      tags.append(f"🚨 {rs['ocorrencias']}")
+            tag_str = " · ".join(tags) if tags else "✅ sem alertas"
+            with cols_lote[i % ncols]:
+                linha1 = f"**{ico} {l[1]}**"
+                linha2 = f"🐄 {rs['ativos']} ativos · 📅 {l[3]}"
+                linha3 = f"_{tag_str}_"
+                st.markdown(linha1 + "  \n" + linha2 + "  \n" + linha3)
+                st.divider()
+        if len(lotes) > 6:
+            st.caption(f"... e mais {len(lotes)-6} lote(s).")
+
+    st.divider()
+
+    # --- Ações rápidas ---
+    st.subheader("⚡ Ações rápidas")
+    qa1, qa2, qa3, qa4 = st.columns(4)
+    if qa1.button("➕ Novo Lote",         use_container_width=True):
+        st.session_state["_nav"] = "Cadastrar Lote"; st.rerun()
+    if qa2.button("⚖️ Registrar Pesagem", use_container_width=True):
+        st.session_state["_nav"] = "Registrar Pesagem"; st.rerun()
+    if qa3.button("🚨 Nova Ocorrência",   use_container_width=True):
+        st.session_state["_nav"] = "Ocorrências Adversas"; st.rerun()
+    if qa4.button("📄 Exportar Relatório",use_container_width=True):
+        st.session_state["_nav"] = "Exportar Relatórios"; st.rerun()
 
 # ===========================================================================
 # BUSCA DE ANIMAL
 # ===========================================================================
 elif menu == "Busca de Animal":
-    st.title("🔍 Busca Global de Animal")
+    _page_header("🔍", "Buscar Animal", "Encontre qualquer animal pelo brinco ou identificação")
     termo = st.text_input("Digite a identificação (brinco, tag, nome...)",
                            placeholder="Ex: BOI-001")
     if termo:
@@ -2107,7 +2261,7 @@ elif menu == "Busca de Animal":
 # MORTALIDADE
 # ===========================================================================
 elif menu == "Mortalidade":
-    st.title("💀 Registro de Mortalidade")
+    _page_header("💀", "Mortalidade", "Baixa de animais com causa e custo da perda")
     tab1, tab2 = st.tabs(["📋 Histórico", "➕ Registrar Morte"])
 
     with tab1:
@@ -2168,7 +2322,7 @@ elif menu == "Mortalidade":
 # IMPORTAR DADOS
 # ===========================================================================
 elif menu == "Importar Dados":
-    st.title("📥 Importação em Lote")
+    _page_header("📥", "Importar Dados", "Importe pesagens e animais via planilha CSV")
 
     lotes = listar_lotes()
 
@@ -2276,7 +2430,7 @@ elif menu == "Importar Dados":
 # COTAÇÃO CEPEA
 # ===========================================================================
 elif menu == "Cotação Cepea":
-    st.title("📈 Cotação Boi Gordo — Cepea/ESALQ")
+    _page_header("📈", "Cotação Cepea", "Preço do boi gordo — ESALQ/Cepea")
 
     col1, col2 = st.columns([2,1])
     with col1:
@@ -2318,7 +2472,7 @@ elif menu == "Cotação Cepea":
 # SCORE DE SAÚDE
 # ===========================================================================
 elif menu == "Score de Saúde":
-    st.title("💯 Score de Saúde por Animal")
+    _page_header("💯", "Score de Saúde", "Ranking 0–100 por animal (GMD + ocorrências + reprodução)")
 
     lotes = listar_lotes()
     if not lotes:
@@ -2377,7 +2531,7 @@ elif menu == "Score de Saúde":
 # MARGEM REAL DO LOTE
 # ===========================================================================
 elif menu == "Margem Real do Lote":
-    st.title("💰 Margem Real por Lote")
+    _page_header("💰", "Margem Real do Lote", "Resultado financeiro: compra × venda × custos")
 
     lotes = listar_lotes()
     if not lotes:
@@ -2440,7 +2594,7 @@ elif menu == "Margem Real do Lote":
 # RASTREABILIDADE GTA
 # ===========================================================================
 elif menu == "Rastreabilidade GTA":
-    st.title("📋 Rastreabilidade GTA / SISBOV")
+    _page_header("📋", "Rastreabilidade GTA", "Guia de Trânsito Animal e certificação SISBOV")
 
     tab1, tab2, tab3 = st.tabs(["📄 GTAs", "➕ Emitir GTA", "🔖 SISBOV"])
 
@@ -2510,7 +2664,7 @@ elif menu == "Rastreabilidade GTA":
 # COMPARATIVO DE LOTES
 # ===========================================================================
 elif menu == "Comparativo de Lotes":
-    st.title("🔀 Comparativo entre Lotes")
+    _page_header("🔀", "Comparativo de Lotes", "Side-by-side de GMD, custos e resultados")
 
     lotes = listar_lotes()
     if len(lotes) < 2:
@@ -2588,7 +2742,7 @@ elif menu == "Comparativo de Lotes":
 # GMD AO LONGO DO TEMPO
 # ===========================================================================
 elif menu == "GMD ao Longo do Tempo":
-    st.title("📉 Evolução do GMD ao Longo do Tempo")
+    _page_header("📉", "GMD ao Longo do Tempo", "Evolução temporal do ganho de peso do lote")
 
     lotes = listar_lotes()
     if not lotes:
@@ -2627,7 +2781,7 @@ elif menu == "GMD ao Longo do Tempo":
 # BACKUP DO SISTEMA
 # ===========================================================================
 elif menu == "Backup do Sistema":
-    st.title("💾 Backup do Sistema")
+    _page_header("💾", "Backup do Sistema", "Download e envio automático dos seus dados")
 
     import database as _db_mod
     db_path = _db_mod.DB_PATH
@@ -2689,7 +2843,7 @@ elif menu == "Backup do Sistema":
 # LOG DE AUDITORIA
 # ===========================================================================
 elif menu == "Log de Auditoria":
-    st.title("📜 Log de Auditoria")
+    _page_header("📜", "Log de Auditoria", "Histórico completo de ações por usuário")
 
     if u["perfil"] != "admin":
         st.warning("Acesso restrito a administradores.")
