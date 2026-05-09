@@ -46,6 +46,14 @@ def _get_pg_url():
     except Exception:
         return os.environ.get("DATABASE_URL", "")
 
+def _date_add(dias, sinal="+"):
+    if _usar_postgres():
+        op = "+" if sinal == "+" else "-"
+        return f"CURRENT_DATE {op} INTERVAL '{abs(dias)} days'"
+    else:
+        op = "+" if sinal == "+" else "-"
+        return f"date('now','{op}{abs(dias)} days')"
+
 # ── Conexao ─────────────────────────────────────────────────────────────────
 @contextmanager
 def _conexao():
@@ -775,11 +783,8 @@ def listar_medicamentos_criticos():
     with _conexao() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id,nome,unidade,estoque_atual,estoque_minimo,validade,custo_unitario FROM medicamentos"
-            " WHERE estoque_atual<=estoque_minimo OR (validade IS NOT NULL AND validade<=CURRENT_DATE + INTERVAL '30 days')"
-            if _usar_postgres() else
-            "SELECT id,nome,unidade,estoque_atual,estoque_minimo,validade,custo_unitario FROM medicamentos"
-            " WHERE estoque_atual<=estoque_minimo OR (validade IS NOT NULL AND validade<=date('now','+30 days'))"
+            f"SELECT id,nome,unidade,estoque_atual,estoque_minimo,validade,custo_unitario FROM medicamentos"
+            f" WHERE estoque_atual<=estoque_minimo OR (validade IS NOT NULL AND validade<={_date_add(30)})"
         )
         rows = _fetch(cur)
         return [(r["id"],r["nome"],r["unidade"],r["estoque_atual"],r["estoque_minimo"],r["validade"],r["custo_unitario"]) for r in rows]
@@ -846,7 +851,12 @@ def listar_partos_previstos():
         if _usar_postgres():
             cur.execute("SELECT r.id,a.identificacao,l.nome,r.data_parto_previsto,r.tipo_cobertura FROM reproducao r JOIN animais a ON a.id=r.animal_id JOIN lotes l ON l.id=a.lote_id WHERE r.resultado='positivo' AND r.data_parto_real IS NULL AND r.data_parto_previsto<=CURRENT_DATE + INTERVAL '30 days' ORDER BY r.data_parto_previsto")
         else:
-            cur.execute("SELECT r.id,a.identificacao,l.nome,r.data_parto_previsto,r.tipo_cobertura FROM reproducao r JOIN animais a ON a.id=r.animal_id JOIN lotes l ON l.id=a.lote_id WHERE r.resultado='positivo' AND r.data_parto_real IS NULL AND r.data_parto_previsto<=date('now','+30 days') ORDER BY r.data_parto_previsto")
+            cur.execute(
+                f"SELECT r.id,a.identificacao,l.nome,r.data_parto_previsto,r.tipo_cobertura"
+                f" FROM reproducao r JOIN animais a ON a.id=r.animal_id JOIN lotes l ON l.id=a.lote_id"
+                f" WHERE r.resultado='positivo' AND r.data_parto_real IS NULL"
+                f" AND r.data_parto_previsto<={_date_add(30)} ORDER BY r.data_parto_previsto"
+            )
         rows = _fetch(cur)
         return [(r["id"],r["identificacao"],r["nome"],r["data_parto_previsto"],r["tipo_cobertura"]) for r in rows]
 
@@ -1137,10 +1147,9 @@ def listar_cotacoes(dias=30):
         if dias <= 0:
             cur.execute("SELECT id,data,preco,fonte FROM cotacoes ORDER BY data ASC")
         else:
-            if _usar_postgres():
-                cur.execute(f"SELECT id,data,preco,fonte FROM cotacoes WHERE data>=CURRENT_DATE - INTERVAL '{dias} days' ORDER BY data ASC")
-            else:
-                cur.execute(f"SELECT id,data,preco,fonte FROM cotacoes WHERE data>=date('now','-{dias} days') ORDER BY data ASC")
+            cur.execute(
+                f"SELECT id,data,preco,fonte FROM cotacoes WHERE data>={_date_add(dias, chr(45))} ORDER BY data ASC"
+            )
         rows = _fetch(cur)
         return [(r["id"],r["data"],r["preco"],r["fonte"]) for r in rows]
 
