@@ -1372,6 +1372,171 @@ elif menu == "Previsao Abate":
 # ============================================================
 elif menu == "Prontuario Animal":
     hdr("Prontuario Animal", "Prontuario Completo", "Historico de peso, saude e reproducao")
+
+    # ── funcao de timeline ────────────────────────────────────────────────
+    def montar_timeline(animal_id, det):
+        _pd2 = pd
+        eventos = []
+
+        # Pesagens
+        ps = listar_pesagens(animal_id)
+        if ps:
+            df_p = _pd2.DataFrame(ps, columns=["id","aid","peso","data"])
+            df_p["data"] = _pd2.to_datetime(df_p["data"])
+            df_p = df_p.sort_values("data")
+            for _, row in df_p.iterrows():
+                eventos.append({
+                    "data": row["data"],
+                    "tipo": "pesagem",
+                    "icone": "scale",
+                    "titulo": f"Pesagem: {row['peso']:.1f} kg",
+                    "detalhe": "",
+                    "cor": "azul",
+                })
+            # GMD entre pesagens consecutivas
+            for i in range(1, len(df_p)):
+                dias = (df_p["data"].iloc[i] - df_p["data"].iloc[i-1]).days
+                if dias > 0:
+                    gmd = (df_p["peso"].iloc[i] - df_p["peso"].iloc[i-1]) / dias
+                    if gmd < 0:
+                        eventos.append({
+                            "data": df_p["data"].iloc[i],
+                            "tipo": "alerta_gmd",
+                            "icone": "warning",
+                            "titulo": f"Queda de GMD: {gmd:.3f} kg/dia",
+                            "detalhe": "Perda de peso detectada",
+                            "cor": "vermelho",
+                        })
+                    elif gmd < 0.5:
+                        eventos.append({
+                            "data": df_p["data"].iloc[i],
+                            "tipo": "alerta_gmd",
+                            "icone": "warning",
+                            "titulo": f"GMD baixo: {gmd:.3f} kg/dia",
+                            "detalhe": "Desempenho abaixo do esperado",
+                            "cor": "amarelo",
+                        })
+
+        # Ocorrencias
+        ocs = listar_ocorrencias(animal_id)
+        for o in ocs:
+            cor_oc = "vermelho" if o[5]=="Alta" else "amarelo" if o[5]=="Media" else "azul_claro"
+            eventos.append({
+                "data": _pd2.to_datetime(o[2]),
+                "tipo": "ocorrencia",
+                "icone": "medical",
+                "titulo": f"{o[3]}: {o[4][:40]}..." if len(o[4])>40 else f"{o[3]}: {o[4]}",
+                "detalhe": f"Gravidade: {o[5]} | Custo: R$ {o[6]:.2f} | Status: {o[8]}",
+                "cor": cor_oc,
+            })
+
+        # Vacinas realizadas
+        try:
+            lote_id_anim = det[3] if det else None
+            if lote_id_anim:
+                vacs = listar_vacinas_agenda(lote_id_anim)
+                for v in vacs:
+                    if v[5] == "realizado" and v[4]:
+                        eventos.append({
+                            "data": _pd2.to_datetime(v[4]),
+                            "tipo": "vacina",
+                            "icone": "syringe",
+                            "titulo": f"Vacina: {v[2]}",
+                            "detalhe": "Realizada",
+                            "cor": "verde",
+                        })
+        except Exception:
+            pass
+
+        # Reproducao
+        repros = listar_reproducao(animal_id)
+        for r in repros:
+            if r[2]:
+                eventos.append({
+                    "data": _pd2.to_datetime(r[2]),
+                    "tipo": "reproducao",
+                    "icone": "heart",
+                    "titulo": f"Cobertura {r[3]}",
+                    "detalhe": f"Resultado: {r[5]}",
+                    "cor": "roxo",
+                })
+            if r[7]:
+                eventos.append({
+                    "data": _pd2.to_datetime(r[7]),
+                    "tipo": "parto",
+                    "icone": "baby",
+                    "titulo": "Parto realizado",
+                    "detalhe": f"Tipo: {r[3]}",
+                    "cor": "verde",
+                })
+
+        # Ordenar por data
+        eventos.sort(key=lambda x: x["data"])
+        return eventos
+
+    def render_timeline(eventos):
+        if not eventos:
+            st.info("Nenhum evento registrado para este animal.")
+            return
+
+        COR_MAP = {
+            "azul":       ("#1565C0", "#E3F2FD", "Pesagem"),
+            "verde":       ("#1B5E20", "#E8F5E9", "Vacina / Parto"),
+            "vermelho":    ("#B71C1C", "#FFEBEE", "Alerta / Ocorrencia grave"),
+            "amarelo":     ("#E65100", "#FFF3E0", "Alerta moderado"),
+            "azul_claro":  ("#0277BD", "#E1F5FE", "Ocorrencia leve"),
+            "roxo":        ("#4A148C", "#F3E5F5", "Reproducao"),
+        }
+
+        ICONE_MAP = {
+            "scale":   "peso",
+            "warning": "alerta",
+            "medical": "ocorrencia",
+            "syringe": "vacina",
+            "heart":   "cobertura",
+            "baby":    "parto",
+        }
+
+        html_parts = [
+            "<style>",
+            ".tl-wrap{padding:8px 0}",
+            ".tl-item{display:flex;gap:12px;margin-bottom:4px;align-items:flex-start}",
+            ".tl-line-col{display:flex;flex-direction:column;align-items:center;width:32px;flex-shrink:0}",
+            ".tl-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}",
+            ".tl-vline{width:2px;flex:1;min-height:16px;background:#E0E0E0;margin:2px 0}",
+            ".tl-content{flex:1;border-radius:8px;padding:8px 12px;border-left:3px solid}",
+            ".tl-date{font-size:11px;color:#888;margin-bottom:2px}",
+            ".tl-title{font-size:13px;font-weight:600;margin:0}",
+            ".tl-detail{font-size:11px;color:#666;margin-top:2px}",
+            "</style>",
+            "<div class='tl-wrap'>",
+        ]
+
+        for i, ev in enumerate(eventos):
+            cor_key = ev["cor"]
+            cor_borda, cor_fundo, _ = COR_MAP.get(cor_key, ("#555","#F5F5F5",""))
+            data_str = ev["data"].strftime("%d/%m/%Y")
+            icone_str = ICONE_MAP.get(ev["icone"], ev["icone"])[:2].upper()
+            is_last = (i == len(eventos)-1)
+
+            html_parts.append("<div class='tl-item'>")
+            html_parts.append("<div class='tl-line-col'>")
+            html_parts.append(f"<div class='tl-dot' style='background:{cor_fundo};color:{cor_borda};border:2px solid {cor_borda}'>{icone_str}</div>")
+            if not is_last:
+                html_parts.append("<div class='tl-vline'></div>")
+            html_parts.append("</div>")
+            html_parts.append(f"<div class='tl-content' style='background:{cor_fundo};border-color:{cor_borda}'>")
+            html_parts.append(f"<div class='tl-date'>{data_str}</div>")
+            html_parts.append(f"<div class='tl-title'>{ev['titulo']}</div>")
+            if ev["detalhe"]:
+                html_parts.append(f"<div class='tl-detail'>{ev['detalhe']}</div>")
+            html_parts.append("</div>")
+            html_parts.append("</div>")
+
+        html_parts.append("</div>")
+        st.markdown("".join(html_parts), unsafe_allow_html=True)
+
+    # ── selecao ───────────────────────────────────────────────────────────
     lotes = listar_lotes()
     if not lotes: st.warning("Nenhum lote.")
     else:
@@ -1385,8 +1550,43 @@ elif menu == "Prontuario Animal":
             with pr2: anim_s = st.selectbox("Animal", list(dict_a.keys()), key="pron_anim")
             animal_id = dict_a[anim_s]
             det = obter_animal(animal_id)
-            t1,t2,t3 = st.tabs(["Dados","Pesagens","Ocorrencias"])
+
+            # Score e status rapido
+            sc = calcular_score_saude(animal_id)
+            car = verificar_carencia(animal_id)
+            km1,km2,km3,km4 = st.columns(4)
+            km1.metric("Score Saude", f"{sc['score']}/100")
+            km2.metric("Classificacao", sc["classificacao"])
+            km3.metric("Ocorrencias", sc["detalhes"]["n_ocorrencias"])
+            km4.metric("Carencia", "Sim" if car["em_carencia"] else "Nao",
+                       delta="Verificar abate" if car["em_carencia"] else None,
+                       delta_color="inverse" if car["em_carencia"] else "normal")
+
+            st.divider()
+
+            t1,t2,t3,t4 = st.tabs(["Timeline","Dados","Pesagens","Ocorrencias"])
+
             with t1:
+                st.subheader(f"Timeline clinica de {anim_s.split(' (ID')[0]}")
+                st.caption("Todos os eventos do animal em ordem cronologica")
+
+                # Legenda
+                leg = st.columns(6)
+                leg[0].markdown("<span style='color:#1565C0'>&#9679;</span> Pesagem", unsafe_allow_html=True)
+                leg[1].markdown("<span style='color:#1B5E20'>&#9679;</span> Vacina/Parto", unsafe_allow_html=True)
+                leg[2].markdown("<span style='color:#B71C1C'>&#9679;</span> Ocorr. grave", unsafe_allow_html=True)
+                leg[3].markdown("<span style='color:#E65100'>&#9679;</span> Alerta", unsafe_allow_html=True)
+                leg[4].markdown("<span style='color:#0277BD'>&#9679;</span> Ocorr. leve", unsafe_allow_html=True)
+                leg[5].markdown("<span style='color:#4A148C'>&#9679;</span> Reproducao", unsafe_allow_html=True)
+
+                st.divider()
+                eventos = montar_timeline(animal_id, det)
+                render_timeline(eventos)
+
+                if eventos:
+                    st.caption(f"Total: {len(eventos)} eventos registrados")
+
+            with t2:
                 with st.form("form_pron"):
                     d1,d2 = st.columns(2)
                     with d1:
@@ -1406,27 +1606,30 @@ elif menu == "Prontuario Animal":
                         pv1.metric("GMD", f"{prev['gmd']:.3f} kg/dia")
                         pv2.metric("Dias restantes", prev["dias_restantes"])
                         pv3.metric("Data prevista", prev["data_prevista"])
-            with t2:
+
+            with t3:
                 ps = listar_pesagens(animal_id)
                 if ps:
                     df_p = pd.DataFrame(ps, columns=["ID","Animal","Peso","Data"])
                     df_p["Data"] = pd.to_datetime(df_p["Data"])
                     df_p = df_p.sort_values("Data")
                     st.line_chart(df_p.set_index("Data")["Peso"])
-                    st.dataframe(df_p, use_container_width=True)
+                    st.dataframe(df_p[["Data","Peso"]].rename(columns={"Peso":"Peso (kg)"}), use_container_width=True)
                 else: st.info("Sem pesagens.")
-            with t3:
+
+            with t4:
                 ocs = listar_ocorrencias(animal_id)
                 if ocs:
                     df_oc = pd.DataFrame(ocs, columns=["ID","Animal","Data","Tipo","Desc","Grav","Custo","Dias","Status"])
-                    st.dataframe(df_oc, use_container_width=True)
-                    st.metric("Custo total", f"R$ {sum(o[6] for o in ocs if o[6]):.2f}")
-                else: st.success("Nenhuma ocorrencia.")
+                    df_oc["Data"] = pd.to_datetime(df_oc["Data"])
+                    st.dataframe(df_oc[["Data","Tipo","Grav","Desc","Custo","Status"]], use_container_width=True)
+                    st.metric("Custo total tratamentos", f"R$ {sum(o[6] for o in ocs if o[6]):.2f}")
+                else: st.success("Nenhuma ocorrencia registrada.")
                 repros = listar_reproducao(animal_id)
                 if repros:
                     st.subheader("Historico Reprodutivo")
                     df_r = pd.DataFrame(repros, columns=["ID","Animal","Cio","Tipo","Diag","Result","Parto Prev","Parto Real","Obs"])
-                    st.dataframe(df_r, use_container_width=True)
+                    st.dataframe(df_r[["Cio","Tipo","Result","Parto Prev","Parto Real"]], use_container_width=True)
 
 # ============================================================
 # MARGEM REAL
