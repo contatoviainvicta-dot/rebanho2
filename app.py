@@ -1482,6 +1482,8 @@ from database import (
     contagem_status_animais, STATUS_ANIMAL, STATUS_LOTE,
     transferir_animal, listar_movimentacoes,
     gerar_insights_lote,
+    listar_pesagens_todos_animais, listar_ocorrencias_todos_animais,
+    calcular_gmds_lote, calcular_scores_lote, resumo_dashboard,
 )
 
 try:
