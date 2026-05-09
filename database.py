@@ -927,6 +927,8 @@ def importar_pesagens_csv(linhas, lote_id):
             adicionar_pesagem(existentes[ident], peso, data); ok += 1
         except Exception as e:
             erros += 1; msgs.append(f"Linha {i}: {e}")
+    if criados > 0:
+        atualizar_qtd_lote(lote_id)
     return dict(importados=ok, erros=erros, animais_criados=criados, mensagens=msgs)
 
 def importar_animais_csv(linhas, lote_id):
@@ -945,6 +947,8 @@ def importar_animais_csv(linhas, lote_id):
             existentes.add(ident); ok += 1
         except Exception as e:
             erros+=1; msgs.append(f"Linha {i}: {e}")
+    if ok > 0:
+        atualizar_qtd_lote(lote_id)
     return dict(importados=ok, erros=erros, mensagens=msgs)
 
 
@@ -974,10 +978,15 @@ def resumo_lote(lote_id):
 
 def atualizar_lote(lote_id, nome, descricao, data_entrada,
                    qtd_comprada, qtd_recebida, transporte, preco_por_animal=None):
+    # qtd_recebida sempre calculada pelos animais ativos -- ignora o valor passado
     with _conexao() as conn:
+        ativos_reais = conn.execute(
+            "SELECT COUNT(*) FROM animais WHERE lote_id=? AND COALESCE(ativo,1)=1",
+            (lote_id,),
+        ).fetchone()[0]
         conn.execute(
             "UPDATE lotes SET nome=?,descricao=?,data_entrada=?,qtd_comprada=?,qtd_recebida=?,transporte=? WHERE id=?",
-            (nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte, lote_id),
+            (nome, descricao, data_entrada, qtd_comprada, ativos_reais, transporte, lote_id),
         )
         if preco_por_animal is not None:
             conn.execute("UPDATE lotes SET preco_por_animal=? WHERE id=?", (preco_por_animal, lote_id))
@@ -1065,3 +1074,12 @@ def listar_pesagens_lote(lote_id):
             (lote_id,),
         ).fetchall()
         return [tuple(r) for r in rows]
+
+
+def sincronizar_todos_lotes():
+    lotes = listar_lotes()
+    resultados = []
+    for l in lotes:
+        n = atualizar_qtd_lote(l[0])
+        resultados.append((l[0], l[1], n))
+    return resultados
