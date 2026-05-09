@@ -1,63 +1,61 @@
-# Sistema de Gestao Pecuaria -- app principal.
-# Execute com:  streamlit run app.py
-
-
+# app.py -- Sistema de Gestao Pecuaria
+# Execute: streamlit run app.py
 
 import os as _os
-if not _os.path.exists('database.py'):
-    exec(open('setup_files.py').read())
-
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime, timedelta
 
 from database import (
     inicializar_banco,
-    # funções originais
     adicionar_lote, listar_lotes, obter_lote,
-    adicionar_animal, listar_animais, listar_animais_por_lote, contar_animais_no_lote,
+    adicionar_animal, listar_animais, listar_animais_por_lote,
+    contar_animais_no_lote, atualizar_animal_detalhes, obter_animal,
     adicionar_pesagem, listar_pesagens,
     adicionar_ocorrencia, listar_ocorrencias,
-    # usuários / auth
-    criar_usuario, autenticar_usuario, listar_usuarios, usuario_existe, alterar_senha,
-    # fazendas
+    criar_usuario, autenticar_usuario, listar_usuarios,
+    usuario_existe, alterar_senha,
     adicionar_fazenda, listar_fazendas,
-    # calendário sanitário
     adicionar_vacina_agenda, registrar_vacina_realizada,
     listar_vacinas_agenda, listar_vacinas_pendentes,
-    # medicamentos
-    adicionar_medicamento, listar_medicamentos, registrar_uso_medicamento,
-    listar_medicamentos_criticos,
-    # reprodução
+    adicionar_medicamento, listar_medicamentos,
+    registrar_uso_medicamento, listar_medicamentos_criticos,
     adicionar_reproducao, atualizar_reproducao, listar_reproducao,
     listar_partos_previstos, taxa_prenhez_lote,
-    # piquetes
-    adicionar_piquete, listar_piquetes, alocar_lote_piquete,
-    liberar_piquete, historico_piquete,
-    # trial / plano
-    obter_status_plano, converter_para_pago, listar_usuarios_trial_expirando,
-    # prontuário / abate
-    atualizar_animal_detalhes, obter_animal, calcular_previsao_abate,
+    adicionar_piquete, listar_piquetes,
+    alocar_lote_piquete, liberar_piquete, historico_piquete,
+    ativar_trial, obter_status_plano, converter_para_pago,
+    listar_usuarios_trial_expirando,
+    registrar_morte, listar_mortalidade, taxa_mortalidade_lote,
+    registrar_auditoria, listar_auditoria,
+    registrar_gta, listar_gta, registrar_sisbov, obter_sisbov,
+    verificar_carencia, calcular_score_saude,
+    registrar_venda_lote, calcular_margem_lote, listar_vendas_lote,
+    salvar_cotacao, listar_cotacoes, obter_ultima_cotacao,
+    calcular_gmd_temporal, calcular_previsao_abate,
+    importar_pesagens_csv, importar_animais_csv,
+    atualizar_qtd_lote, resumo_lote,
 )
+
 try:
     from exports import gerar_excel_lote, gerar_excel_sanitario, gerar_pdf_relatorio
-    _EXPORTS_OK = True
+    _EXP = True
 except ImportError:
-    _EXPORTS_OK = False
+    _EXP = False
     def gerar_excel_lote(*a, **k): return b""
     def gerar_excel_sanitario(*a, **k): return b""
-    def gerar_pdf_relatorio(*a, **k): return b"" 
+    def gerar_pdf_relatorio(*a, **k): return b""
+
 try:
     from notifications import (
         email_boas_vindas, email_trial_expirando, email_trial_expirado,
         email_vacina_pendente, email_medicamento_critico,
         email_parto_previsto, email_abate_previsto, email_configurado,
-        _enviar, _template,
     )
-    _NOTIF_OK = True
+    _NOTIF = True
 except ImportError:
-    _NOTIF_OK = False
-    def email_boas_vindas(*a, **k): return (False, "notifications.py não encontrado")
+    _NOTIF = False
+    def email_boas_vindas(*a, **k): return (False, "")
     def email_trial_expirando(*a, **k): return (False, "")
     def email_trial_expirado(*a, **k): return (False, "")
     def email_vacina_pendente(*a, **k): return (False, "")
@@ -65,2930 +63,1703 @@ except ImportError:
     def email_parto_previsto(*a, **k): return (False, "")
     def email_abate_previsto(*a, **k): return (False, "")
     def email_configurado(): return False
-    def _enviar(*a, **k): return (False, "")
-    def _template(*a, **k): return "" 
+
 try:
     from cepea import cotacao_com_cache, historico_grafico
-    _CEPEA_OK = True
+    _CEPEA = True
 except ImportError:
-    _CEPEA_OK = False
-    def cotacao_com_cache(_db): return dict(preco=0.0, data="", fonte="", sucesso=False, msg="módulo cepea.py não encontrado")
+    _CEPEA = False
+    def cotacao_com_cache(_db): return dict(preco=0.0, data="", fonte="", sucesso=False, msg="cepea.py nao encontrado")
     def historico_grafico(c): return dict(datas=[], precos=[])
 
 try:
     from backup import gerar_backup_zip, gerar_backup_sqlite, nome_arquivo_backup
-    _BACKUP_OK = True
+    _BACKUP = True
 except ImportError:
-    _BACKUP_OK = False
+    _BACKUP = False
     def gerar_backup_zip(p): return b""
     def gerar_backup_sqlite(p): return b""
-    def nome_arquivo_backup(ext="zip"): return f"backup.{ext}" 
-from database import (
-    registrar_morte, listar_mortalidade, taxa_mortalidade_lote,
-    registrar_auditoria, listar_auditoria,
-    registrar_gta, listar_gta, registrar_sisbov, obter_sisbov,
-    calcular_score_saude,
-    registrar_venda_lote, calcular_margem_lote, listar_vendas_lote,
-    salvar_cotacao, listar_cotacoes, obter_ultima_cotacao,
-    calcular_gmd_temporal,
-    importar_pesagens_csv, importar_animais_csv,
-    verificar_carencia,
-    atualizar_qtd_lote, resumo_lote,
-)
+    def nome_arquivo_backup(ext="zip"): return f"backup.{ext}"
 
 inicializar_banco()
 
-# ---------------------------------------------------------------------------
-# Configuração da página
-# ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Gestão Pecuária",
-    page_icon="🐄",
+    page_title="Gestao Pecuaria",
+    page_icon="cow",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ===========================================================================
-# AUTENTICAÇÃO
-# ===========================================================================
+# ── helper ──────────────────────────────────────────────────────────────────
+def hdr(icone, titulo, sub=""):
+    st.markdown(f"## {icone} {titulo}")
+    if sub: st.caption(sub)
+    st.divider()
+
+def sel_lote(key="lote"):
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado. Va em Cadastrar Lote primeiro.")
+        return None, None
+    d = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+    sel = st.selectbox("Lote", list(d.keys()), key=key)
+    return d[sel], lotes
+
+def sel_animal(lote_id, key="animal"):
+    animais = listar_animais_por_lote(lote_id)
+    if not animais:
+        st.warning("Nenhum animal neste lote.")
+        return None
+    d = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+    sel = st.selectbox("Animal", list(d.keys()), key=key)
+    return d[sel]
+
+# ── autenticacao ─────────────────────────────────────────────────────────────
 if "usuario" not in st.session_state:
     st.session_state.usuario = None
 
-def _tela_login():
-    st.title("🐄 Sistema de Gestão Pecuária")
-    st.subheader("Acesso ao sistema")
-
+if st.session_state.usuario is None:
+    st.title("Gestao Pecuaria")
     if not usuario_existe():
-        st.info("Nenhum usuário cadastrado. Crie o primeiro acesso abaixo.")
-        with st.form("form_primeiro_usuario"):
-            nome  = st.text_input("Seu nome")
+        st.info("Primeiro acesso: crie sua conta de administrador.")
+        with st.form("form_first"):
+            nome  = st.text_input("Nome")
             email = st.text_input("E-mail")
             senha = st.text_input("Senha", type="password")
-            perfil = st.selectbox("Perfil", ["veterinario", "fazendeiro", "admin"])
+            perf  = st.selectbox("Perfil", ["admin","veterinario","fazendeiro"])
             if st.form_submit_button("Criar conta"):
                 if nome and email and senha:
-                    from database import ativar_trial
-                    uid = criar_usuario(nome, email, senha, perfil)
+                    uid = criar_usuario(nome, email, senha, perf)
                     ativar_trial(uid)
                     email_boas_vindas(email, nome)
-                    st.success("Conta criada! Você tem 30 dias de trial gratuito. Faça login.")
+                    st.success("Conta criada! Faca login.")
                     st.rerun()
                 else:
                     st.error("Preencha todos os campos.")
-        return
-
-    with st.form("form_login"):
-        email = st.text_input("E-mail")
-        senha = st.text_input("Senha", type="password")
-        if st.form_submit_button("Entrar"):
-            u = autenticar_usuario(email, senha)
-            if u:
-                st.session_state.usuario = u
-                st.rerun()
-            else:
-                st.error("E-mail ou senha incorretos.")
-
-if st.session_state.usuario is None:
-    _tela_login()
+    else:
+        with st.form("form_login"):
+            email = st.text_input("E-mail")
+            senha = st.text_input("Senha", type="password")
+            if st.form_submit_button("Entrar"):
+                u = autenticar_usuario(email, senha)
+                if u:
+                    st.session_state.usuario = u
+                    st.rerun()
+                else:
+                    st.error("E-mail ou senha incorretos.")
     st.stop()
 
-# ---------------------------------------------------------------------------
-# SIDEBAR -- usuário logado
-# ---------------------------------------------------------------------------
 u = st.session_state.usuario
 
-# --- Cabeçalho do usuário ---
+# ── sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    col_icon, col_info = st.columns([1, 3])
-    with col_icon:
-        perfil_emoji = {"admin": "⚙️", "veterinario": "🩺", "fazendeiro": "🌾"}.get(u["perfil"], "👤")
-        st.markdown(f"<div style='font-size:28px;padding-top:4px'>{perfil_emoji}</div>",
-                    unsafe_allow_html=True)
-    with col_info:
-        st.markdown(f"**{u['nome']}**")
-        st.caption(u["perfil"].capitalize())
-    if st.button("🚪 Sair", use_container_width=True):
+    perf_ico = {"admin":"gear","veterinario":"stethoscope","fazendeiro":"seedling"}.get(u["perfil"],"person")
+    st.markdown(f"**{u['nome']}**")
+    st.caption(u["perfil"].capitalize())
+    if st.button("Sair", use_container_width=True):
         st.session_state.usuario = None
         st.rerun()
 
-# --- Banner de trial ---
-_status_plano = obter_status_plano(u["id"])
-with st.sidebar:
-    if _status_plano["plano"] == "trial":
-        _dr = _status_plano["dias_restantes"]
-        if _dr <= 3:
-            st.error(f"🔴 Trial: {_dr} dia(s) restante(s)!")
-        elif _dr <= 7:
-            st.warning(f"⚠️ Trial expira em {_dr} dias")
-            if email_configurado():
-                email_trial_expirando(u["email"], u["nome"], _dr)
-        else:
-            pct = int((_dr / 30) * 100)
-            st.progress(pct / 100, text=f"🕐 Trial: {_dr}/30 dias")
-    elif _status_plano["plano"] == "expirado":
-        st.error("🔴 Trial expirado")
-        if email_configurado():
-            email_trial_expirado(u["email"], u["nome"])
+    sp = obter_status_plano(u["id"])
+    if sp["plano"] == "trial":
+        dr = sp["dias_restantes"]
+        if dr <= 3:   st.error(f"Trial: {dr} dia(s) restante(s)!")
+        elif dr <= 7: st.warning(f"Trial: {dr} dias restantes")
+        else:         st.progress(dr/30, text=f"Trial: {dr}/30 dias")
+    elif sp["plano"] == "expirado":
+        st.error("Trial expirado")
     else:
-        st.success("✅ Plano ativo")
+        st.success("Plano ativo")
 
-# --- Alertas rápidos compactos ---
-_pendentes = listar_vacinas_pendentes()
-_criticos  = listar_medicamentos_criticos()
-_partos    = listar_partos_previstos()
-with st.sidebar:
+    pend  = listar_vacinas_pendentes()
+    crit  = listar_medicamentos_criticos()
+    parto = listar_partos_previstos()
     alertas = []
-    if _pendentes: alertas.append(f"💉 {len(_pendentes)} vacina(s)")
-    if _criticos:  alertas.append(f"💊 {len(_criticos)} med. crítico(s)")
-    if _partos:    alertas.append(f"🐄 {len(_partos)} parto(s) em 30d")
-    if alertas:
-        st.warning("**Alertas:** " + " · ".join(alertas))
-
-st.sidebar.divider()
-
-# --- MENU REORGANIZADO EM GRUPOS ---
-with st.sidebar:
-    st.caption("NAVEGAÇÃO")
-
-menu = st.sidebar.selectbox(
-    "Ir para",
-    [
-        # ── INÍCIO ─────────────────────────────────
-        "🏠  Início",
-        "🔍  Buscar Animal",
-        # ── CADASTROS ──────────────────────────────
-        "─── Cadastros ───",
-        "📦  Cadastrar Lote",
-        "🐄  Cadastrar Animal",
-        "⚖️  Registrar Pesagem",
-        "🚨  Registrar Ocorrência",
-        "💀  Registrar Morte",
-        "📥  Importar Dados (CSV)",
-        # ── ANÁLISE ────────────────────────────────
-        "─── Análise ───",
-        "📊  Dashboard Sanitário",
-        "📈  Analisar por Lote",
-        "🐄  Analisar Animal",
-        "💯  Score de Saúde",
-        "📉  GMD ao Longo do Tempo",
-        "🔀  Comparativo de Lotes",
-        "💰  Painel de Decisão",
-        "📊  Dashboard Executivo",
-        "🔎  Pesquisar Ocorrências",
-        # ── GESTÃO ─────────────────────────────────
-        "─── Gestão ───",
-        "💉  Calendário Sanitário",
-        "💊  Estoque de Medicamentos",
-        "🐄  Controle Reprodutivo",
-        "🌿  Mapa de Piquetes",
-        "🥩  Previsão de Abate",
-        "📋  Prontuário do Animal",
-        "💰  Margem Real do Lote",
-        "📈  Cotação Cepea",
-        # ── RASTREABILIDADE ────────────────────────
-        "─── Rastreabilidade ───",
-        "📄  Rastreabilidade GTA",
-        # ── RELATÓRIOS ─────────────────────────────
-        "─── Relatórios ───",
-        "📄  Exportar Relatórios",
-        "💾  Backup do Sistema",
-        # ── SISTEMA ────────────────────────────────
-        "─── Sistema ───",
-        "📧  Notificações",
-        "📜  Log de Auditoria",
-        "⚙️  Administração",
-    ],
-    label_visibility="collapsed",
-)
-
-# Navegação programática (ações rápidas do Home)
-if "_nav" in st.session_state and st.session_state["_nav"]:
-    _destino = st.session_state.pop("_nav")
-    # Encontrar a chave do menu_map que aponta para o destino
-    _chave = next((k for k, v in _menu_map.items() if v == _destino), None)
-    if _chave:
-        st.session_state["_menu_key"] = _chave
-
-# Normalizar menu: remover emoji + espaços para manter compatibilidade
-import re as _re
-_menu_map = {
-    "🏠  Início":                   "Home Dashboard",
-    "🔍  Buscar Animal":             "Busca de Animal",
-    "📦  Cadastrar Lote":            "Cadastrar Lote",
-    "🐄  Cadastrar Animal":          "Cadastrar Animal",
-    "⚖️  Registrar Pesagem":         "Registrar Pesagem",
-    "🚨  Registrar Ocorrência":      "Ocorrências Adversas",
-    "💀  Registrar Morte":           "Mortalidade",
-    "📥  Importar Dados (CSV)":      "Importar Dados",
-    "📊  Dashboard Sanitário":       "Dashboard Sanitário",
-    "📈  Analisar por Lote":         "Analisar por Lote",
-    "🐄  Analisar Animal":           "Analisar Animal",
-    "💯  Score de Saúde":            "Score de Saúde",
-    "📉  GMD ao Longo do Tempo":     "GMD ao Longo do Tempo",
-    "🔀  Comparativo de Lotes":      "Comparativo de Lotes",
-    "💰  Painel de Decisão":         "Painel de Decisão",
-    "📊  Dashboard Executivo":       "Dashboard Executivo",
-    "🔎  Pesquisar Ocorrências":     "Pesquisar Ocorrências",
-    "💉  Calendário Sanitário":      "Calendário Sanitário",
-    "💊  Estoque de Medicamentos":   "Estoque de Medicamentos",
-    "🐄  Controle Reprodutivo":      "Controle Reprodutivo",
-    "🌿  Mapa de Piquetes":          "Mapa de Piquetes",
-    "🥩  Previsão de Abate":         "Previsão de Abate",
-    "📋  Prontuário do Animal":      "Prontuário do Animal",
-    "💰  Margem Real do Lote":       "Margem Real do Lote",
-    "📈  Cotação Cepea":             "Cotação Cepea",
-    "📄  Rastreabilidade GTA":       "Rastreabilidade GTA",
-    "📄  Exportar Relatórios":       "Exportar Relatórios",
-    "💾  Backup do Sistema":         "Backup do Sistema",
-    "📧  Notificações":              "Notificações",
-    "📜  Log de Auditoria":          "Log de Auditoria",
-    "⚙️  Administração":             "Administração",
-}
-# separadores viram None → página em branco
-menu = _menu_map.get(menu, None)
-
-# ---------------------------------------------------------------------------
-# Helper: cabeçalho padronizado de página
-# ---------------------------------------------------------------------------
-def _page_header(icone: str, titulo: str, subtitulo: str = ""):
-    '''Renderiza cabeçalho limpo e padronizado em todas as telas.'''
-    st.markdown(f"## {icone} {titulo}")
-    if subtitulo:
-        st.caption(subtitulo)
-    st.divider()
-
-# ===========================================================================
-# SEPARADORES (menu=None quando usuário clica num grupo)
-# ===========================================================================
-if menu is None:
-    st.info("👈 Selecione uma opção no menu lateral.")
-    st.stop()
-
-# ===========================================================================
-# CADASTRAR LOTE
-# ===========================================================================
-elif menu == "Cadastrar Lote":
-    _page_header("📦", "Cadastrar Lote", "Registre um novo lote de animais")
-
-    col_form, col_info = st.columns([2, 1])
-
-    with col_form:
-        with st.form("form_cadastrar_lote"):
-            st.markdown("#### 📋 Dados do lote")
-            c1, c2 = st.columns(2)
-            with c1:
-                nome         = st.text_input("Nome do lote *")
-                data         = st.date_input("Data de entrada")
-                qtd_comprada = st.number_input("Qtd comprada", min_value=0, step=1)
-                transporte   = st.text_input("Transportadora")
-            with c2:
-                descricao     = st.text_area("Descrição", height=70)
-                qtd_recebida  = st.number_input("Qtd recebida", min_value=0, step=1)
-                preco_por_animal = st.number_input("Preço por animal (R$)", min_value=0.0)
-
-            st.markdown("#### 🌿 Manejo")
-            c3, c4 = st.columns(2)
-            with c3:
-                tipo_alimentacao = st.selectbox("Alimentação",
-                    ["Pasto", "Confinamento", "Semi-confinamento"])
-            with c4:
-                tipo_dieta = st.selectbox("Dieta",
-                    ["Capim", "Ração", "Silagem", "Misto"])
-
-            salvar = st.form_submit_button("💾 Salvar Lote", use_container_width=True,
-                                            type="primary")
-
-        if salvar:
-            if not nome:
-                st.error("Informe o nome do lote")
-            elif qtd_recebida > qtd_comprada:
-                st.error("Quantidade recebida não pode ser maior que a comprada")
-            elif qtd_recebida == 0:
-                st.error("Informe a quantidade recebida")
-            else:
-                lid = adicionar_lote(nome, descricao, str(data),
-                                     qtd_comprada, qtd_recebida, transporte)
-                registrar_auditoria(u["id"], "criar_lote", "lotes", lid, nome)
-                st.success(f"✅ Lote **{nome}** criado com sucesso!")
-                st.balloons()
-
-    with col_info:
-        st.markdown("#### 💡 Dicas")
-        st.info("**Nome:** use algo fácil de identificar, ex: *Lote Nelore Jan/25*")
-        st.info("**Qtd recebida:** pode ser menor que a comprada se houve perdas no transporte")
-        st.info("**Preço por animal:** usado para calcular a margem real na hora da venda")
-        if "preco_por_animal" in dir() and qtd_comprada > 0:
-            custo_total = preco_por_animal * qtd_comprada
-            st.metric("💰 Custo total estimado", f"R$ {custo_total:,.2f}")
-
-# ===========================================================================
-# DASHBOARD SANITÁRIO
-# ===========================================================================
-elif menu == "Dashboard Sanitário":
-    _page_header("🦠", "Dashboard Sanitário", "Incidências, curva epidêmica e alertas")
-
-    lotes = listar_lotes()
-    opcoes = ["Todos os lotes"]
-    dict_lotes = {}
-    for l in lotes:
-        nome_opcao = f"{l[1]} (ID {l[0]})"
-        opcoes.append(nome_opcao)
-        dict_lotes[nome_opcao] = l[0]
-
-    escolha = st.selectbox("Filtrar por lote", opcoes)
-
-    if escolha == "Todos os lotes":
-        animais = listar_animais()
-    else:
-        lote_id = dict_lotes[escolha]
-        animais = listar_animais_por_lote(lote_id)
-
-    # Coletar ocorrências
-    todas_ocorrencias = []
-    for animal in animais:
-        oc = listar_ocorrencias(animal[0])
-        todas_ocorrencias.extend(oc)
-
-    df_oc = pd.DataFrame(
-        todas_ocorrencias,
-        columns=["id","animal_id","data","tipo","descricao",
-                 "gravidade","custo","dias_recuperacao","status"],
-    ) if todas_ocorrencias else pd.DataFrame(
-        columns=["id","animal_id","data","tipo","descricao",
-                 "gravidade","custo","dias_recuperacao","status"])
-
-    total_animais = len(animais)
-    animais_com_oc = df_oc["animal_id"].nunique() if len(df_oc) > 0 else 0
-    incidencia     = (animais_com_oc / total_animais * 100) if total_animais > 0 else 0
-    custo_total_oc = df_oc["custo"].fillna(0).sum() if len(df_oc) > 0 else 0
-
-    # --- KPIs ---
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("🐄 Animais analisados", total_animais)
-    k2.metric("🦠 Com ocorrência",     animais_com_oc)
-    k3.metric("📊 Incidência",         f"{incidencia:.1f}%",
-              delta="⚠️ Alta" if incidencia > 20 else None,
-              delta_color="inverse" if incidencia > 20 else "normal")
-    k4.metric("💊 Custo sanitário",    f"R$ {custo_total_oc:.2f}")
+    if pend:  alertas.append(f"Vacinas: {len(pend)}")
+    if crit:  alertas.append(f"Meds: {len(crit)}")
+    if parto: alertas.append(f"Partos: {len(parto)}")
+    if alertas: st.warning(" | ".join(alertas))
 
     st.divider()
-
-    if len(df_oc) > 0:
-        tab_graf, tab_lote, tab_curva, tab_corr, tab_alerta = st.tabs([
-            "📊 Gráficos", "🐄 Por Lote", "📈 Curva Epidêmica",
-            "📉 Correlação GMD", "🚨 Alertas"
-        ])
-
-        with tab_graf:
-            c1, c2 = st.columns(2)
-            with c1:
-                st.subheader("Ocorrências por tipo")
-                st.bar_chart(df_oc["tipo"].value_counts())
-            with c2:
-                st.subheader("Por gravidade")
-                st.bar_chart(df_oc["gravidade"].value_counts())
-
-        with tab_lote:
-            dados_lote = []
-            for lote in lotes:
-                lid_t = lote[0]
-                animais_lote = listar_animais_por_lote(lid_t)
-                total = len(animais_lote)
-                ids   = [a[0] for a in animais_lote]
-                oc_lt = df_oc[df_oc["animal_id"].isin(ids)] if len(df_oc) > 0 else pd.DataFrame()
-                doentes = oc_lt["animal_id"].nunique() if len(oc_lt) > 0 else 0
-                inc_l   = (doentes / total * 100) if total > 0 else 0
-                dados_lote.append((lote[1], inc_l))
-            df_lt = pd.DataFrame(dados_lote, columns=["Lote","Incidência (%)"]).set_index("Lote")
-            st.bar_chart(df_lt)
-
-            dados_tipo = []
-            if total_animais > 0:
-                for tipo in df_oc["tipo"].unique():
-                    d_tp = df_oc[df_oc["tipo"] == tipo]["animal_id"].nunique()
-                    dados_tipo.append((tipo, d_tp / total_animais * 100))
-            if dados_tipo:
-                df_tp = pd.DataFrame(dados_tipo, columns=["Tipo","Incidência (%)"]).set_index("Tipo")
-                st.subheader("Por tipo (%)")
-                st.bar_chart(df_tp)
-
-        with tab_curva:
-            df_oc["data"] = pd.to_datetime(df_oc["data"])
-            curva_tipo = df_oc.groupby(["data","tipo"]).size().unstack(fill_value=0)
-            st.line_chart(curva_tipo)
-
-        with tab_corr:
-            dados_corr = []
-            for animal in listar_animais():
-                ps = listar_pesagens(animal[0])
-                if len(ps) > 1:
-                    df_p = pd.DataFrame(ps, columns=["ID","Animal","Peso","Data"])
-                    df_p["Data"] = pd.to_datetime(df_p["Data"])
-                    df_p = df_p.sort_values("Data")
-                    dias = (df_p["Data"].iloc[-1] - df_p["Data"].iloc[0]).days
-                    if dias > 0:
-                        g = (df_p["Peso"].iloc[-1] - df_p["Peso"].iloc[0]) / dias
-                        qtd = len(listar_ocorrencias(animal[0]))
-                        dados_corr.append((animal[1], round(g,3), qtd))
-            if dados_corr:
-                df_c = pd.DataFrame(dados_corr, columns=["Animal","GMD","Ocorrencias"])
-                st.scatter_chart(df_c, x="Ocorrencias", y="GMD")
-                media_g = df_c["GMD"].mean()
-                for _, row in df_c.iterrows():
-                    if row["Ocorrencias"] > 0 and row["GMD"] < media_g:
-                        st.error(f"🔴 {row['Animal']}: baixo GMD + ocorrência")
-                    elif row["Ocorrencias"] > 0:
-                        st.warning(f"🟡 {row['Animal']}: ocorrência sem impacto aparente")
-                    elif row["GMD"] < media_g:
-                        st.warning(f"🟠 {row['Animal']}: baixo GMD sem ocorrência")
-                    else:
-                        st.success(f"🟢 {row['Animal']}: bom desempenho e saudável")
-            else:
-                st.info("Sem dados suficientes para correlação")
-
-        with tab_alerta:
-            # Alertas por lote
-            st.subheader("Por lote")
-            for nome, inc in dados_lote:
-                if inc > 20:   st.error(f"🔴 {nome}: alta incidência ({inc:.1f}%)")
-                elif inc > 5:  st.warning(f"🟡 {nome}: incidência moderada ({inc:.1f}%)")
-                else:          st.success(f"🟢 {nome}: controle adequado ({inc:.1f}%)")
-
-            if dados_tipo:
-                st.subheader("Por tipo")
-                for tipo, inc in dados_tipo:
-                    if inc > 20:  st.error(f"🔴 {tipo}: alta incidência ({inc:.1f}%)")
-                    elif inc > 5: st.warning(f"🟡 {tipo}: incidência moderada ({inc:.1f}%)")
-                    else:         st.success(f"🟢 {tipo}: controle adequado ({inc:.1f}%)")
-
-            # Alertas inteligentes
-            st.subheader("🧠 Alertas Inteligentes")
-            for lote in listar_lotes():
-                lid_a   = lote[0]
-                nom_a   = lote[1]
-                anim_a  = listar_animais_por_lote(lid_a)
-                tot_a   = len(anim_a)
-                if tot_a == 0: continue
-                ocs_a, gmds_a, custo_a = [], [], 0
-                for an in anim_a:
-                    oc_a = listar_ocorrencias(an[0])
-                    ocs_a.extend(oc_a)
-                    custo_a += sum(o[6] for o in oc_a if o[6])
-                    ps_a = listar_pesagens(an[0])
-                    if len(ps_a) > 1:
-                        df_a = pd.DataFrame(ps_a, columns=["ID","Animal","Peso","Data"])
-                        df_a["Data"] = pd.to_datetime(df_a["Data"])
-                        df_a = df_a.sort_values("Data")
-                        d_a  = (df_a["Data"].iloc[-1]-df_a["Data"].iloc[0]).days
-                        if d_a > 0:
-                            g_a = (df_a["Peso"].iloc[-1]-df_a["Peso"].iloc[0])/d_a
-                            if 0 <= g_a <= 2: gmds_a.append(g_a)
-                inc_a  = (len(set(o[1] for o in ocs_a))/tot_a*100) if ocs_a else 0
-                gmd_a  = sum(gmds_a)/len(gmds_a) if gmds_a else 0
-                if inc_a > 20 and gmd_a < 0.5:
-                    st.error(f"🔴 {nom_a}: incidência {inc_a:.1f}% + GMD {gmd_a:.2f} -- problema grave")
-                elif custo_a > 1000:
-                    st.warning(f"🟡 {nom_a}: custo sanitário elevado R$ {custo_a:.2f}")
-                elif len(ocs_a) >= 5:
-                    st.warning(f"🟠 {nom_a}: {len(ocs_a)} ocorrências -- monitorar surto")
-                else:
-                    st.success(f"🟢 {nom_a}: controlado (inc {inc_a:.1f}%, GMD {gmd_a:.2f})")
-    else:
-        st.info("Nenhuma ocorrência registrada ainda.")
-        st.caption("Registre ocorrências em **Cadastros → Registrar Ocorrência**.")
-
-
-# ===========================================================================
-# CADASTRAR ANIMAL
-# ===========================================================================
-elif menu == "Cadastrar Animal":
-    _page_header("🐄", "Cadastrar Animal", "Vincule um animal a um lote")
-
-    lotes = listar_lotes()
-    if len(lotes) == 0:
-        st.warning("Nenhum lote cadastrado.")
-        st.info("👈 Vá em **Cadastros → Cadastrar Lote** primeiro.")
-    else:
-        dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-        col_sel, col_info = st.columns([2, 1])
-
-        with col_sel:
-            escolha = st.selectbox("Selecione o lote", list(dict_lotes.keys()))
-        lote_id = dict_lotes[escolha]
-        lote    = obter_lote(lote_id)
-        qtd_recebida  = lote[5]
-        total_animais = contar_animais_no_lote(lote_id)
-        vagas = max(0, qtd_recebida - total_animais)
-
-        with col_info:
-            st.metric("🐄 Cadastrados / Capacidade",
-                      f"{total_animais} / {qtd_recebida}",
-                      delta=f"{vagas} vaga(s)" if vagas > 0 else "Lote cheio",
-                      delta_color="normal" if vagas > 0 else "inverse")
-
-        if total_animais >= qtd_recebida:
-            st.error("⚠️ Limite do lote atingido. Aumente a capacidade em Cadastrar Lote.")
-        else:
-            with st.form("form_cadastrar_animal"):
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    identificacao = st.text_input("Identificação / Brinco *",
-                                                   placeholder="Ex: BOI-001")
-                with c2:
-                    idade = st.number_input("Idade (meses)", 0, 240, value=24)
-                with c3:
-                    peso_entrada = st.number_input("Peso de entrada (kg)", 0.0, value=0.0)
-
-                c4, c5, c6 = st.columns(3)
-                with c4:
-                    raca = st.text_input("Raça", placeholder="Ex: Nelore")
-                with c5:
-                    sexo = st.selectbox("Sexo", ["indefinido", "macho", "fêmea"])
-                with c6:
-                    peso_alvo = st.number_input("Peso alvo abate (kg)", 0.0, value=0.0)
-
-                salvar = st.form_submit_button("💾 Cadastrar Animal",
-                                               use_container_width=True, type="primary")
-
-            if salvar:
-                if not identificacao:
-                    st.error("Informe a identificação do animal")
-                else:
-                    aid = adicionar_animal(identificacao, idade, lote_id)
-                    if peso_alvo > 0 or raca or sexo != "indefinido" or peso_entrada > 0:
-                        atualizar_animal_detalhes(aid, peso_alvo=peso_alvo if peso_alvo > 0 else None,
-                                                  observacoes=None)
-                    registrar_auditoria(u["id"], "cadastro_animal", "animais", aid, identificacao)
-                    st.success(f"✅ **{identificacao}** cadastrado no lote **{lote[1]}**!")
-                    st.rerun()
-
-# ===========================================================================
-# REGISTRAR PESAGEM
-# ===========================================================================
-elif menu == "Registrar Pesagem":
-    _page_header("⚖️", "Registrar Pesagem", "Registre o peso atual de um animal")
-
-    lotes = listar_lotes()
-    if len(lotes) == 0:
-        st.warning("Nenhum lote cadastrado.")
-        st.info("👈 Vá em **Cadastros → Cadastrar Lote** primeiro.")
-    else:
-        dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-
-        col_a, col_b = st.columns([1, 1])
-        with col_a:
-            escolha_lote = st.selectbox("Lote", list(dict_lotes.keys()))
-        lote_id = dict_lotes[escolha_lote]
-        animais = listar_animais_por_lote(lote_id)
-
-        if len(animais) == 0:
-            st.warning("Nenhum animal neste lote.")
-        else:
-            dict_animais = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-            with col_b:
-                escolha_animal = st.selectbox("Animal", list(dict_animais.keys()))
-            animal_id = dict_animais[escolha_animal]
-
-            # Mostrar última pesagem do animal para referência
-            pesagens_ant = listar_pesagens(animal_id)
-            if pesagens_ant:
-                ult = pesagens_ant[-1]
-                det = obter_animal(animal_id)
-                c1, c2, c3 = st.columns(3)
-                c1.metric("⚖️ Último peso", f"{ult[2]:.1f} kg", f"em {ult[3]}")
-                if det and det[7] > 0:
-                    falta = det[7] - ult[2]
-                    c2.metric("🎯 Peso alvo", f"{det[7]:.0f} kg",
-                              f"faltam {falta:.1f} kg" if falta > 0 else "✅ atingido!")
-                if len(pesagens_ant) >= 2:
-                    df_p = pd.DataFrame(pesagens_ant, columns=["id","aid","peso","data"])
-                    df_p["data"] = pd.to_datetime(df_p["data"])
-                    df_p = df_p.sort_values("data")
-                    dias = (df_p["data"].iloc[-1] - df_p["data"].iloc[0]).days
-                    if dias > 0:
-                        gmd_ref = (df_p["peso"].iloc[-1] - df_p["peso"].iloc[0]) / dias
-                        c3.metric("📈 GMD atual", f"{gmd_ref:.3f} kg/dia")
-                st.divider()
-
-            with st.form("form_pesagem"):
-                cp1, cp2 = st.columns(2)
-                with cp1:
-                    peso = st.number_input("Peso (kg) *", 0.0, 1000.0, step=0.5)
-                with cp2:
-                    data_p = st.date_input("Data da pesagem")
-                salvar_p = st.form_submit_button("💾 Salvar Pesagem",
-                                                  use_container_width=True, type="primary")
-
-            if salvar_p:
-                if peso <= 0:
-                    st.error("Informe um peso válido (maior que zero)")
-                elif peso > 1000:
-                    st.error("Peso muito alto -- verifique o valor")
-                else:
-                    adicionar_pesagem(animal_id, peso, str(data_p))
-                    registrar_auditoria(u["id"], "pesagem", "pesagens",
-                                        animal_id, f"{peso}kg em {data_p}")
-                    st.success(f"✅ Pesagem de **{peso:.1f} kg** registrada!")
-                    st.rerun()
-
-# ===========================================================================
-# ANÁLISE POR LOTE
-# ===========================================================================
-elif menu == "Analisar por Lote":
-    _page_header("📈", "Análise por Lote", "Desempenho econômico e zootécnico")
-
-    lotes = listar_lotes()
-    if len(lotes) == 0:
-        st.warning("Nenhum lote cadastrado")
-    else:
-        dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-        escolha = st.selectbox("Selecione o lote", list(dict_lotes.keys()))
-        lote_id = dict_lotes[escolha]
-
-        lote = obter_lote(lote_id)
-        animais = listar_animais_por_lote(lote_id)
-
-        # --- Resumo consistente do lote ---
-        rs = resumo_lote(lote_id)
-        col_r1, col_r2, col_r3, col_r4, col_r5 = st.columns(5)
-        col_r1.metric("🐄 Animais ativos",   rs["ativos"])
-        col_r2.metric("💀 Mortes",           rs["mortos"])
-        col_r3.metric("📄 GTAs emitidas",    rs["gtas_emitidas"])
-        col_r4.metric("🚨 Ocorrências",      rs["ocorrencias"])
-        col_r5.metric("💉 Vacinas pendentes",rs["vacinas_pendentes"])
-        st.divider()
-
-        # --- Parâmetros de custo ---
-        st.subheader("💰 Parâmetros de Custo")
-        custo_diario = st.number_input("Custo diário por animal (R$)", 0.0, 100.0, 10.0)
-        preco_kg = st.number_input("Preço do kg (R$)", 0.0, 50.0, 10.0)
-
-        # --- Período do lote ---
-        datas = []
-        for animal in animais:
-            pesagens = listar_pesagens(animal[0])
-            for p in pesagens:
-                datas.append(p[3])
-
-        if len(datas) > 1:
-            datas_dt = pd.to_datetime(datas)
-            dias_lote = (max(datas_dt) - min(datas_dt)).days
-        else:
-            dias_lote = 0
-
-        numero_animais = len(animais)
-        custo_operacional = custo_diario * numero_animais * dias_lote
-
-        st.metric("📆 Duração do lote", f"{dias_lote} dias")
-        st.metric("💰 Custo operacional", f"R$ {custo_operacional:,.2f}")
-
-        # --- Ganho total e custo sanitário ---
-        ganho_total = 0
-        custo_sanitario = 0
-
-        for animal in animais:
-            pesagens = listar_pesagens(animal[0])
-            if len(pesagens) > 1:
-                df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-                df["Data"] = pd.to_datetime(df["Data"])
-                df = df.sort_values("Data")
-                ganho = df["Peso"].iloc[-1] - df["Peso"].iloc[0]
-                if ganho > 0:
-                    ganho_total += ganho
-
-            for oc in listar_ocorrencias(animal[0]):
-                if oc[6] is not None:
-                    custo_sanitario += oc[6]
-
-        receita = ganho_total * preco_kg
-        lucro = receita - (custo_operacional + custo_sanitario)
-
-        # --- Resultado econômico ---
-        st.subheader("💰 Resultado Econômico")
-        st.metric("📈 Receita estimada", f"R$ {receita:,.2f}")
-        st.metric("💸 Custo operacional", f"R$ {custo_operacional:,.2f}")
-        st.metric("💊 Custo sanitário", f"R$ {custo_sanitario:,.2f}")
-
-        if lucro > 0:
-            st.success(f"🟢 Lucro: R$ {lucro:.2f}")
-        else:
-            st.error(f"🔴 Prejuízo: R$ {lucro:.2f}")
-
-        lucro_por_animal = lucro / len(animais) if len(animais) > 0 else 0
-        st.metric("💰 Lucro por animal", f"R$ {lucro_por_animal:.2f}")
-        st.metric("💊 Custo sanitário total", f"R$ {custo_sanitario:.2f}")
-
-        # --- Eficiência econômica ---
-        if ganho_total > 0:
-            custo_kg = custo_operacional / ganho_total
-            st.subheader("💰 Eficiência Econômica")
-            st.metric("⚖️ Ganho total", f"{ganho_total:.2f} kg")
-            st.write(f"💸 Custo por kg: R$ {custo_kg:.2f}")
-        else:
-            st.info("Sem ganho suficiente para cálculo")
-
-        # --- Ranking econômico ---
-        ranking_economico = []
-        for animal in animais:
-            animal_id = animal[0]
-            nome_animal = animal[1]
-            pesagens = listar_pesagens(animal_id)
-
-            if len(pesagens) > 1:
-                df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-                df["Data"] = pd.to_datetime(df["Data"])
-                df = df.sort_values("Data")
-
-                peso_inicial = df["Peso"].iloc[0]
-                peso_final = df["Peso"].iloc[-1]
-                dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-
-                if dias > 0:
-                    ganho = peso_final - peso_inicial
-                    if ganho > 0:
-                        custo_animal = custo_diario * dias
-                        custo_por_kg = custo_animal / ganho
-                        ranking_economico.append((nome_animal, custo_por_kg))
-
-        ranking_economico.sort(key=lambda x: x[1])
-
-        if ranking_economico:
-            st.subheader("💰 Ranking Econômico (R$/kg)")
-            for i, (nome, custo) in enumerate(ranking_economico, start=1):
-                st.write(f"{i}º - {nome} → R$ {custo:.2f}/kg")
-
-            melhor = ranking_economico[0]
-            pior = ranking_economico[-1]
-            st.success(f"🥇 Mais eficiente: {melhor[0]} (R$ {melhor[1]:.2f}/kg)")
-            st.warning(f"⚠️ Menos eficiente: {pior[0]} (R$ {pior[1]:.2f}/kg)")
-
-            st.subheader("🚨 Alertas Econômicos")
-            for nome, custo in ranking_economico:
-                if custo > 15:
-                    st.error(f"🔴 {nome} com custo muito alto (R$ {custo:.2f}/kg)")
-                elif custo > 10:
-                    st.warning(f"🟡 {nome} com custo moderado (R$ {custo:.2f}/kg)")
-        else:
-            st.info("Sem dados suficientes para ranking econômico")
-
-        # --- GMD médio do lote ---
-        gmds = []
-        for animal in animais:
-            pesagens = listar_pesagens(animal[0])
-            if len(pesagens) > 1:
-                df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-                df["Data"] = pd.to_datetime(df["Data"])
-                df = df.sort_values("Data")
-
-                peso_inicial = df["Peso"].iloc[0]
-                peso_final = df["Peso"].iloc[-1]
-                dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-
-                if dias > 0:
-                    gmd = (peso_final - peso_inicial) / dias
-                    if 0 <= gmd <= 2:
-                        gmds.append(gmd)
-
-        if gmds:
-            gmd_medio = sum(gmds) / len(gmds)
-            st.subheader("📈 Desempenho Zootécnico")
-            st.metric("🚀 GMD médio do lote", f"{gmd_medio:.3f} kg/dia")
-            if gmd_medio < 0.5:
-                st.warning("⚠️ Lote com baixo desempenho")
-            else:
-                st.success("✅ Bom desempenho")
-        else:
-            st.info("Sem dados suficientes para GMD do lote")
-
-        # --- Ranking de GMD por animal ---
-        ranking_gmd = []
-        for animal in animais:
-            animal_id = animal[0]
-            nome_animal = animal[1]
-            pesagens = listar_pesagens(animal_id)
-
-            if len(pesagens) > 1:
-                df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-                df["Data"] = pd.to_datetime(df["Data"])
-                df = df.sort_values("Data")
-
-                peso_inicial = df["Peso"].iloc[0]
-                peso_final = df["Peso"].iloc[-1]
-                dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-
-                if dias > 0:
-                    gmd = (peso_final - peso_inicial) / dias
-                    if 0 <= gmd <= 2:
-                        ranking_gmd.append((nome_animal, gmd))
-
-        ranking_gmd.sort(key=lambda x: x[1], reverse=True)
-
-        if ranking_gmd:
-            st.subheader("🏆 Ranking de GMD (Animal)")
-            for i, (nome, gmd) in enumerate(ranking_gmd, start=1):
-                st.write(f"{i}º - {nome} → {gmd:.3f} kg/dia")
-            melhor = ranking_gmd[0]
-            pior = ranking_gmd[-1]
-            st.success(f"🥇 Melhor: {melhor[0]} ({melhor[1]:.3f} kg/dia)")
-            st.warning(f"⚠️ Pior: {pior[0]} ({pior[1]:.3f} kg/dia)")
-        else:
-            st.info("Sem dados suficientes para ranking de GMD")
-
-        # --- Ranking de GMD entre lotes (único, sem duplicata) ---
-        # FIX: código duplicado removido; mantida única versão com gráfico
-        ranking_lotes = []
-        todos_lotes = listar_lotes()
-
-        for lote_item in todos_lotes:
-            lote_id_temp = lote_item[0]
-            nome_lote = lote_item[1]
-            animais_lote = listar_animais_por_lote(lote_id_temp)
-            gmds_lote = []
-
-            for animal in animais_lote:
-                pesagens = listar_pesagens(animal[0])
-                if len(pesagens) > 1:
-                    df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-                    df["Data"] = pd.to_datetime(df["Data"])
-                    df = df.sort_values("Data")
-
-                    peso_inicial = df["Peso"].iloc[0]
-                    peso_final = df["Peso"].iloc[-1]
-                    dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-
-                    if dias > 0:
-                        gmd = (peso_final - peso_inicial) / dias
-                        if 0 <= gmd <= 2:
-                            gmds_lote.append(gmd)
-
-            if gmds_lote:
-                gmd_medio_lote = sum(gmds_lote) / len(gmds_lote)
-                ranking_lotes.append((nome_lote, gmd_medio_lote))
-
-        ranking_lotes.sort(key=lambda x: x[1], reverse=True)
-
-        if ranking_lotes:
-            st.subheader("📊 Ranking de GMD entre Lotes")
-            for i, (nome, gmd) in enumerate(ranking_lotes, start=1):
-                st.write(f"{i}º - {nome} → {gmd:.3f} kg/dia")
-
-            df_lotes = pd.DataFrame(ranking_lotes, columns=["Lote", "GMD"]).set_index("Lote")
-            st.bar_chart(df_lotes)
-
-            melhor = ranking_lotes[0]
-            pior = ranking_lotes[-1]
-            st.success(f"🥇 Melhor lote: {melhor[0]} ({melhor[1]:.3f})")
-            st.warning(f"⚠️ Pior lote: {pior[0]} ({pior[1]:.3f})")
-
-            # --- Classificação dos lotes ---
-            st.subheader("🧠 Classificação dos Lotes")
-            for nome, gmd in ranking_lotes:
-                if gmd >= 1.0:
-                    st.success(f"🟢 {nome}: Excelente desempenho ({gmd:.3f} kg/dia)")
-                elif gmd >= 0.7:
-                    st.info(f"🔵 {nome}: Bom desempenho ({gmd:.3f} kg/dia)")
-                elif gmd >= 0.5:
-                    st.warning(f"🟡 {nome}: Desempenho moderado ({gmd:.3f} kg/dia)")
-                else:
-                    st.error(f"🔴 {nome}: Baixo desempenho ({gmd:.3f} kg/dia)")
-
-            # --- Análise comparativa ---
-            if len(ranking_lotes) > 1:
-                diferenca = ranking_lotes[0][1] - ranking_lotes[-1][1]
-                st.subheader("📊 Análise Comparativa")
-                st.write(f"📈 Diferença entre melhor e pior lote: {diferenca:.3f} kg/dia")
-                if diferenca > 0.5:
-                    st.error("🚨 Alta variabilidade entre lotes → possível problema de manejo")
-                elif diferenca > 0.2:
-                    st.warning("⚠️ Diferença moderada entre lotes")
-                else:
-                    st.success("✅ Lotes com desempenho homogêneo")
-
-            # --- Recomendações ---
-            st.subheader("🧾 Recomendações de Manejo")
-            for nome, gmd in ranking_lotes:
-                if gmd < 0.5:
-                    st.error(f"🔴 {nome}: Avaliar sanidade, nutrição e manejo URGENTE")
-                elif gmd < 0.7:
-                    st.warning(f"🟡 {nome}: Ajustar dieta e monitorar ganho")
-                else:
-                    st.success(f"🟢 {nome}: Manter manejo atual")
-
-            # --- Score de eficiência ---
-            ranking_score = []
-            for lote_item in todos_lotes:
-                lote_id_temp = lote_item[0]
-                nome_lote = lote_item[1]
-                animais_lote = listar_animais_por_lote(lote_id_temp)
-                gmds_l = []
-                ganho_t = 0
-                dias_t = 0
-
-                for animal in animais_lote:
-                    pesagens = listar_pesagens(animal[0])
-                    if len(pesagens) > 1:
-                        df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-                        df["Data"] = pd.to_datetime(df["Data"])
-                        df = df.sort_values("Data")
-
-                        p_ini = df["Peso"].iloc[0]
-                        p_fin = df["Peso"].iloc[-1]
-                        dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-
-                        if dias > 0:
-                            ganho = p_fin - p_ini
-                            if ganho > 0:
-                                gmd = ganho / dias
-                                gmds_l.append(gmd)
-                                ganho_t += ganho
-                                dias_t += dias
-
-                if gmds_l and ganho_t > 0:
-                    gmd_m = sum(gmds_l) / len(gmds_l)
-                    custo_t = custo_diario * dias_t
-                    custo_pk = custo_t / ganho_t
-                    score = gmd_m / custo_pk
-                    ranking_score.append((nome_lote, score, gmd_m, custo_pk))
-
-            ranking_score.sort(key=lambda x: x[1], reverse=True)
-
-            if ranking_score:
-                st.subheader("🏆 Ranking Final de Eficiência")
-                for i, (nome, score, gmd, custo) in enumerate(ranking_score, start=1):
-                    st.write(
-                        f"{i}º - {nome} → Score: {score:.4f} | "
-                        f"GMD: {gmd:.3f} | Custo/kg: R$ {custo:.2f}"
-                    )
-                melhor = ranking_score[0]
-                pior = ranking_score[-1]
-                st.success(f"🥇 Melhor lote: {melhor[0]} (Score {melhor[1]:.4f})")
-                st.error(f"🔴 Pior lote: {pior[0]} (Score {pior[1]:.4f})")
-            else:
-                st.info("Sem dados suficientes para cálculo do score")
-        else:
-            st.info("Sem dados suficientes para comparação entre lotes")
-
-# ===========================================================================
-# ANÁLISE INDIVIDUAL DO ANIMAL
-# ===========================================================================
-elif menu == "Analisar Animal":
-    _page_header("🐄", "Análise Individual", "Histórico de peso, ocorrências e alertas do animal")
-
-    lotes = listar_lotes()
-    if len(lotes) == 0:
-        st.warning("Nenhum lote cadastrado")
-    else:
-        dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-        ca1, ca2 = st.columns(2)
-        with ca1:
-            escolha_lote  = st.selectbox("Lote", list(dict_lotes.keys()))
-        lote_id = dict_lotes[escolha_lote]
-        animais = listar_animais_por_lote(lote_id)
-
-        if len(animais) == 0:
-            st.warning("Nenhum animal neste lote")
-        else:
-            dict_animais = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-            with ca2:
-                escolha_animal = st.selectbox("Animal", list(dict_animais.keys()))
-            animal_id  = dict_animais[escolha_animal]
-            pesagens   = listar_pesagens(animal_id)
-            ocorrencias = listar_ocorrencias(animal_id)
-            gmd        = None
-            sc         = calcular_score_saude(animal_id)
-
-            # KPIs rápidos
-            km1, km2, km3, km4 = st.columns(4)
-            km1.metric("⚖️ Pesagens",    len(pesagens))
-            km2.metric("🚨 Ocorrências", len(ocorrencias))
-            km3.metric("💯 Score saúde", f"{sc['score']}/100")
-            km4.metric("🏷️ Status",      sc["classificacao"])
-
-            tab_peso, tab_oc, tab_alerta = st.tabs(
-                ["📊 Pesagens & GMD", "🚨 Ocorrências", "🔔 Alertas & Diagnóstico"])
-
-            with tab_peso:
-                if len(pesagens) > 0:
-                    df = pd.DataFrame(pesagens, columns=["ID","Animal","Peso","Data"])
-                    df["Data"] = pd.to_datetime(df["Data"])
-                    df = df.sort_values("Data")
-                    st.line_chart(df.set_index("Data")["Peso"])
-                    st.dataframe(df[["Data","Peso"]].rename(columns={"Peso":"Peso (kg)"}),
-                                 use_container_width=True)
-
-                    if len(df) > 1:
-                        peso_inicial = df["Peso"].iloc[0]
-                        peso_final   = df["Peso"].iloc[-1]
-                        dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-                        if dias > 0:
-                            gmd = (peso_final - peso_inicial) / dias
-                            d1, d2, d3 = st.columns(3)
-                            d1.metric("⚖️ Ganho total",  f"{peso_final-peso_inicial:.2f} kg")
-                            d2.metric("📆 Período",       f"{dias} dias")
-                            d3.metric("📈 GMD",           f"{gmd:.3f} kg/dia")
-                            if gmd < 0:
-                                st.error("🚨 Perda de peso -- possível doença")
-                            elif gmd > 2:
-                                st.error("🚨 GMD irreal -- revisar dados")
-                            elif gmd < 0.5:
-                                st.warning("⚠️ GMD baixo")
-                            else:
-                                st.success("✅ Bom desempenho")
-                else:
-                    st.info("Sem pesagens registradas para este animal.")
-
-            with tab_oc:
-                if len(ocorrencias) > 0:
-                    df_oc = pd.DataFrame(ocorrencias,
-                        columns=["id","animal_id","data","tipo","descricao",
-                                 "gravidade","custo","dias_recuperacao","status"])
-                    df_oc["data"] = pd.to_datetime(df_oc["data"])
-                    st.dataframe(df_oc[["data","tipo","gravidade","descricao","custo","status"]],
-                                 use_container_width=True)
-                    custo_tot = df_oc["custo"].fillna(0).sum()
-                    st.metric("💊 Custo total tratamentos", f"R$ {custo_tot:.2f}")
-                    for _, row in df_oc.iterrows():
-                        if row["gravidade"] == "Alta":
-                            st.error(f"🔴 {row['tipo']} -- {row['descricao']}")
-                        elif row["gravidade"] == "Média":
-                            st.warning(f"🟡 {row['tipo']} -- {row['descricao']}")
-                        else:
-                            st.info(f"🔵 {row['tipo']} -- {row['descricao']}")
-                else:
-                    st.success("✅ Nenhuma ocorrência registrada")
-
-            with tab_alerta:
-                # Score detalhado
-                det = sc["detalhes"]
-                sa1, sa2, sa3 = st.columns(3)
-                sa1.metric("GMD (pts)",         f"{det['pts_gmd']}/50")
-                sa2.metric("Ocorrências (pts)", f"{det['pts_ocorrencias']}/35")
-                sa3.metric("Reprodução (pts)",  f"{det['pts_reproducao']}/15")
-
-                # Alerta integrado
-                if gmd is not None:
-                    if gmd < 0.5 and len(ocorrencias) > 0:
-                        st.error("🚨 Alto risco: baixo desempenho + histórico clínico")
-                    elif gmd < 0.5:
-                        st.warning("⚠️ Baixo GMD -- revisar nutrição e sanidade")
-                    elif len(ocorrencias) > 0:
-                        st.warning("⚠️ Histórico clínico -- monitorar")
-                    else:
-                        st.success("✅ Animal saudável e produtivo")
-
-                # Carência
-                car = verificar_carencia(animal_id)
-                if car["em_carencia"]:
-                    st.error(f"💊 Em carência até **{car['liberado_em']}** -- não abater antes!")
-                else:
-                    st.success("✅ Sem restrição de carência")
-
-# ===========================================================================
-# OCORRÊNCIAS ADVERSAS
-# ===========================================================================
-elif menu == "Ocorrências Adversas":
-    _page_header("🚨", "Registrar Ocorrência", "Doenças, lesões e medicações")
-
-    lotes = listar_lotes()
-    if len(lotes) == 0:
-        st.warning("Nenhum lote cadastrado")
-    else:
-        dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-        escolha_lote = st.selectbox("Selecione o lote", list(dict_lotes.keys()))
-        lote_id = dict_lotes[escolha_lote]
-
-        animais = listar_animais_por_lote(lote_id)
-        if len(animais) == 0:
-            st.warning("Nenhum animal neste lote")
-        else:
-            dict_animais = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-            escolha_animal = st.selectbox("Selecione o animal", list(dict_animais.keys()))
-            animal_id = dict_animais[escolha_animal]
-
-            with st.form("form_ocorrencia"):
-                data = st.date_input("Data")
-                tipo = st.selectbox("Tipo", ["Doença", "Lesão", "Medicamento", "Outros"])
-                descricao = st.text_area("Descrição")
-                gravidade = st.selectbox("Gravidade", ["Baixa", "Média", "Alta"])
-                custo = st.number_input("💰 Custo do tratamento (R$)", 0.0)
-                dias = st.number_input("⏱️ Dias de recuperação", 0)
-                status = st.selectbox("Status", ["Em tratamento", "Resolvido"])
-                submitted = st.form_submit_button("Salvar Ocorrência")
-
-                if submitted:
-                    adicionar_ocorrencia(animal_id, str(data), tipo, descricao,
-                                         gravidade, custo, dias, status)
-                    st.success("Ocorrência registrada com sucesso!")
-
-# ===========================================================================
-# PAINEL DE DECISÃO
-# ===========================================================================
-elif menu == "Painel de Decisão":
-    _page_header("📊", "Painel de Decisão", "Resultado financeiro por lote")
-
-    preco_kg = st.number_input("Preço do kg (R$)", 0.0, 50.0, 10.0)
-    custo_diario = st.number_input("Custo diário por animal (R$)", 0.0, 100.0, 10.0)
-
-    opcao = st.selectbox("Modo de análise", ["Todos os lotes", "Selecionar lote específico"])
-    lotes = listar_lotes()
-
-    if len(lotes) == 0:
-        st.warning("Nenhum lote cadastrado")
-        st.stop()
-
-    dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-
-    if opcao == "Selecionar lote específico":
-        escolha = st.selectbox("Escolha o lote", list(dict_lotes.keys()))
-        lote_id_escolhido = dict_lotes[escolha]
-        st.info(f"📊 Analisando apenas: {escolha}")
-        lotes_para_analise = [l for l in lotes if l[0] == lote_id_escolhido]
-    else:
-        lotes_para_analise = lotes
-
-    dados_lotes = []
-    for lote in lotes_para_analise:
-        lote_id = lote[0]
-        nome_lote = lote[1]
-        animais = listar_animais_por_lote(lote_id)
-
-        ganho_total = 0
-        custo_sanitario = 0
-        dias_total = 0
-
-        for animal in animais:
-            animal_id = animal[0]
-            pesagens = listar_pesagens(animal_id)
-
-            if len(pesagens) > 1:
-                df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-                df["Data"] = pd.to_datetime(df["Data"])
-                df = df.sort_values("Data")
-                ganho = df["Peso"].iloc[-1] - df["Peso"].iloc[0]
-                dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-                if ganho > 0 and dias > 0:
-                    ganho_total += ganho
-                    dias_total += dias
-
-            for oc in listar_ocorrencias(animal_id):
-                if oc[6] is not None:
-                    custo_sanitario += oc[6]
-
-        numero_animais = len(animais)
-        custo_operacional = custo_diario * numero_animais * dias_total
-        receita = ganho_total * preco_kg
-        lucro = receita - (custo_operacional + custo_sanitario)
-        dados_lotes.append((nome_lote, lucro, receita, custo_operacional, custo_sanitario))
-
-    df_decisao = pd.DataFrame(
-        dados_lotes,
-        columns=["Lote", "Lucro", "Receita", "Custo Operacional", "Custo Sanitário"],
-    ).sort_values(by="Lucro", ascending=False)
-
-    st.subheader("📈 Visão Geral")
-    if len(df_decisao) > 0:
-        total_lucro = df_decisao["Lucro"].sum()
-        st.metric("💰 Lucro total", f"R$ {total_lucro:.2f}")
-        melhor = df_decisao.iloc[0]
-        pior = df_decisao.iloc[-1]
-        st.success(f"🥇 Melhor lote: {melhor['Lote']} (R$ {melhor['Lucro']:.2f})")
-        st.error(f"🔴 Pior lote: {pior['Lote']} (R$ {pior['Lucro']:.2f})")
-    else:
-        st.warning("Nenhum lote com dados suficientes")
-        st.stop()
-
-    st.subheader("📊 Ranking de Lotes")
-    st.dataframe(df_decisao)
-
-    st.subheader("📉 Lucro por lote")
-    st.bar_chart(df_decisao.set_index("Lote")["Lucro"])
-
-    st.subheader("🚨 Alertas de Decisão")
-    for _, row in df_decisao.iterrows():
-        if row["Lucro"] < 0:
-            st.error(f"🔴 {row['Lote']}: prejuízo → revisar manejo urgente")
-        elif row["Custo Sanitário"] > row["Receita"] * 0.2:
-            st.warning(f"🟡 {row['Lote']}: custo sanitário elevado")
-        else:
-            st.success(f"🟢 {row['Lote']}: operação saudável")
-
-# ===========================================================================
-# PESQUISAR OCORRÊNCIAS
-# ===========================================================================
-elif menu == "Pesquisar Ocorrências":
-    _page_header("🔎", "Pesquisar Ocorrências", "Filtros por lote, tipo e gravidade")
-
-    lotes = listar_lotes()
-    dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-
-    # Filtros em linha
-    f1, f2, f3 = st.columns(3)
-    with f1:
-        escolha_lote = st.selectbox("Lote", ["Todos"] + list(dict_lotes.keys()))
-    with f2:
-        tipo_f = st.selectbox("Tipo", ["Todos","Doença","Lesão","Medicamento","Outros"])
-    with f3:
-        grav_f = st.selectbox("Gravidade", ["Todas","Baixa","Média","Alta"])
-
-    todas_ocorrencias = []
-    if escolha_lote == "Todos":
-        animais = listar_animais()
-    else:
-        lote_id = dict_lotes[escolha_lote]
-        animais = listar_animais_por_lote(lote_id)
-
-    for animal in animais:
-        oc = listar_ocorrencias(animal[0])
-        todas_ocorrencias.extend(oc)
-
-    df_oc = pd.DataFrame(
-        todas_ocorrencias,
-        columns=["id","animal_id","data","tipo","descricao",
-                 "gravidade","custo","dias_recuperacao","status"],
-    ) if todas_ocorrencias else pd.DataFrame(
-        columns=["id","animal_id","data","tipo","descricao",
-                 "gravidade","custo","dias_recuperacao","status"])
-
-    if len(df_oc) > 0:
-        if tipo_f != "Todos":
-            df_oc = df_oc[df_oc["tipo"] == tipo_f]
-        if grav_f != "Todas":
-            df_oc = df_oc[df_oc["gravidade"] == grav_f]
-        df_oc["data"] = pd.to_datetime(df_oc["data"])
-        df_oc = df_oc.sort_values(by="data", ascending=False)
-
-    st.divider()
-
-    if len(df_oc) > 0:
-        # KPIs da pesquisa
-        pk1, pk2, pk3, pk4 = st.columns(4)
-        pk1.metric("📋 Ocorrências",    len(df_oc))
-        pk2.metric("🐄 Animais afetados", df_oc["animal_id"].nunique())
-        custo_tot = df_oc["custo"].fillna(0).sum()
-        pk3.metric("💰 Custo total",    f"R$ {custo_tot:.2f}")
-        altas = len(df_oc[df_oc["gravidade"]=="Alta"])
-        pk4.metric("🔴 Gravidade Alta", altas,
-                   delta="⚠️" if altas > 0 else None,
-                   delta_color="inverse" if altas > 0 else "normal")
-
-        # Nível de incidência
-        if len(df_oc) >= 10:
-            st.error("🚨 Alta incidência de ocorrências")
-        elif len(df_oc) >= 5:
-            st.warning("⚠️ Incidência moderada")
-        else:
-            st.success("✅ Baixa incidência")
-
-        st.divider()
-        tab_dados, tab_grafico = st.tabs(["📋 Registros", "📊 Análise"])
-
-        with tab_dados:
-            st.dataframe(
-                df_oc[["data","tipo","gravidade","descricao","custo","dias_recuperacao","status"]],
-                use_container_width=True
-            )
-
-        with tab_grafico:
-            col_g1, col_g2 = st.columns(2)
-            with col_g1:
-                st.subheader("Por tipo")
-                st.bar_chart(df_oc["tipo"].value_counts())
-            with col_g2:
-                st.subheader("Por gravidade")
-                st.bar_chart(df_oc["gravidade"].value_counts())
-
-            custo_por_tipo = df_oc.groupby("tipo")["custo"].sum()
-            if len(custo_por_tipo) > 0:
-                tipo_caro   = custo_por_tipo.idxmax()
-                valor_caro  = custo_por_tipo.max()
-                st.warning(f"💸 Maior impacto financeiro: **{tipo_caro}** -- R$ {valor_caro:.2f}")
-
-        # Alertas inteligentes integrados
-        st.divider()
-        st.subheader("🧠 Alertas Inteligentes")
-        for lote in listar_lotes():
-            lid_i    = lote[0]
-            nom_i    = lote[1]
-            anim_i   = listar_animais_por_lote(lid_i)
-            tot_i    = len(anim_i)
-            if tot_i == 0: continue
-            ocs_i, gmds_i, custo_i = [], [], 0
-            for an in anim_i:
-                oc_i = listar_ocorrencias(an[0])
-                ocs_i.extend(oc_i)
-                custo_i += sum(o[6] for o in oc_i if o[6])
-                ps_i = listar_pesagens(an[0])
-                if len(ps_i) > 1:
-                    df_i = pd.DataFrame(ps_i, columns=["ID","Animal","Peso","Data"])
-                    df_i["Data"] = pd.to_datetime(df_i["Data"])
-                    df_i = df_i.sort_values("Data")
-                    d_i  = (df_i["Data"].iloc[-1]-df_i["Data"].iloc[0]).days
-                    if d_i > 0:
-                        g_i = (df_i["Peso"].iloc[-1]-df_i["Peso"].iloc[0])/d_i
-                        if 0 <= g_i <= 2: gmds_i.append(g_i)
-            inc_i  = (len(set(o[1] for o in ocs_i))/tot_i*100) if ocs_i else 0
-            gmd_i  = sum(gmds_i)/len(gmds_i) if gmds_i else 0
-            if inc_i > 20 and gmd_i < 0.5:
-                st.error(f"🔴 {nom_i}: incidência {inc_i:.1f}% + GMD baixo -- atenção urgente")
-            elif custo_i > 1000:
-                st.warning(f"🟡 {nom_i}: custo sanitário elevado R$ {custo_i:.2f}")
-            elif len(ocs_i) >= 5:
-                st.warning(f"🟠 {nom_i}: {len(ocs_i)} ocorrências -- monitorar surto")
-            else:
-                st.success(f"🟢 {nom_i}: controlado (inc {inc_i:.1f}%, GMD {gmd_i:.2f})")
-    else:
-        st.info("Nenhuma ocorrência encontrada com os filtros selecionados.")
-
-
-# ===========================================================================
-# DASHBOARD EXECUTIVO
-# ===========================================================================
-elif menu == "Dashboard Executivo":
-    _page_header("📊", "Dashboard Executivo", "KPIs consolidados do lote")
-
-    preco_kg = st.number_input("Preço do kg (R$)", 0.0, 50.0, 10.0)
-    custo_diario = st.number_input("Custo diário por animal (R$)", 0.0, 100.0, 10.0)
-
-    lotes = listar_lotes()
-    if len(lotes) == 0:
-        st.warning("Nenhum lote cadastrado")
-        st.stop()
-
-    dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    escolha = st.selectbox("Selecione o lote", list(dict_lotes.keys()))
-    lote_id = dict_lotes[escolha]
-
-    animais = listar_animais_por_lote(lote_id)
-    if len(animais) == 0:
-        st.warning("Nenhum animal no lote")
-        st.stop()
-
-    ganho_total = 0
-    custo_sanitario = 0
-    dias_total = 0
-    animais_com_oc = set()
-    gmds = []
-
-    for animal in animais:
-        animal_id = animal[0]
-        pesagens = listar_pesagens(animal_id)
-
-        if len(pesagens) > 1:
-            df = pd.DataFrame(pesagens, columns=["ID", "Animal", "Peso", "Data"])
-            df["Data"] = pd.to_datetime(df["Data"])
-            df = df.sort_values("Data")
-            ganho = df["Peso"].iloc[-1] - df["Peso"].iloc[0]
-            dias = (df["Data"].iloc[-1] - df["Data"].iloc[0]).days
-            if ganho > 0 and dias > 0:
-                ganho_total += ganho
-                dias_total += dias
-                gmd = ganho / dias
-                if 0 <= gmd <= 2:
-                    gmds.append(gmd)
-
-        ocorrencias = listar_ocorrencias(animal_id)
-        if len(ocorrencias) > 0:
-            animais_com_oc.add(animal_id)
-        for oc in ocorrencias:
-            if oc[6] is not None:
-                custo_sanitario += oc[6]
-
-    numero_animais = len(animais)
-    custo_operacional = custo_diario * numero_animais * dias_total
-    receita = ganho_total * preco_kg
-    lucro = receita - (custo_operacional + custo_sanitario)
-
-    incidencia = (len(animais_com_oc) / numero_animais) * 100 if numero_animais > 0 else 0
-    gmd_medio = sum(gmds) / len(gmds) if gmds else 0
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("💰 Lucro", f"R$ {lucro:.2f}")
-    col2.metric("🦠 Incidência", f"{incidencia:.2f}%")
-    col3.metric("📈 GMD", f"{gmd_medio:.3f} kg/dia")
-
-    st.subheader("🚨 Status do Lote")
-    if lucro < 0:
-        st.error("🔴 Prejuízo → ação imediata necessária")
-    elif incidencia > 20:
-        st.error("🔴 Alta incidência sanitária")
-    elif gmd_medio < 0.5:
-        st.warning("🟡 Baixo desempenho produtivo")
-    elif custo_sanitario > receita * 0.2:
-        st.warning("🟡 Custo sanitário elevado")
-    else:
-        st.success("🟢 Lote saudável e lucrativo")
-
-    st.subheader("📋 Resumo")
-    st.metric("🐄 Animais no lote", numero_animais)
-    st.metric("⚖️ Ganho total", f"{ganho_total:.2f} kg")
-    st.metric("💸 Custo sanitário", f"R$ {custo_sanitario:.2f}")
-
-# ===========================================================================
-# SEPARADOR DE MENU (item não clicável)
-# ===========================================================================
-elif menu == "── Novos Módulos ──":
-    pass  # separador obsoleto
-
-# ===========================================================================
-# CALENDÁRIO SANITÁRIO
-# ===========================================================================
-elif menu == "Calendário Sanitário":
-    _page_header("💉", "Calendário Sanitário", "Agenda de vacinas e medicações")
-
-    tab1, tab2, tab3 = st.tabs(["📋 Agenda", "➕ Agendar Vacina", "✅ Registrar Realização"])
-
-    with tab1:
-        st.subheader("Agenda de Vacinas")
-        lotes = listar_lotes()
-        opcoes = ["Todos os lotes"] + [f"{l[1]} (ID {l[0]})" for l in lotes]
-        dict_lotes = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-        filtro = st.selectbox("Filtrar por lote", opcoes, key="cal_filtro")
-
-        lote_id_fil = dict_lotes.get(filtro) if filtro != "Todos os lotes" else None
-        vacinas = listar_vacinas_agenda(lote_id_fil)
-
-        if vacinas:
-            df_v = pd.DataFrame(vacinas, columns=["ID","Lote ID","Vacina","Previsto","Realizado","Status","Observação"])
-            df_v["Previsto"] = pd.to_datetime(df_v["Previsto"]).dt.strftime("%d/%m/%Y")
-            df_v["Realizado"] = pd.to_datetime(df_v["Realizado"], errors="coerce").dt.strftime("%d/%m/%Y")
-
-            hoje = date.today()
-            for _, row in df_v.iterrows():
-                try:
-                    dt_prev = datetime.strptime(row["Previsto"], "%d/%m/%Y").date()
-                    atrasado = dt_prev < hoje and row["Status"] == "pendente"
-                except Exception:
-                    atrasado = False
-                if row["Status"] == "realizado":
-                    st.success(f"✅ {row['Vacina']} -- Lote {row['Lote ID']} -- Realizado em {row['Realizado']}")
-                elif atrasado:
-                    st.error(f"🔴 ATRASADA: {row['Vacina']} -- Previsto {row['Previsto']}")
-                else:
-                    st.warning(f"🟡 Pendente: {row['Vacina']} -- Previsto {row['Previsto']}")
-
-            st.dataframe(df_v, use_container_width=True)
-
-            # Exportar
-            vacinas_todas = listar_vacinas_agenda()
-            meds = listar_medicamentos()
-            xls = gerar_excel_sanitario(vacinas_todas, meds)
-            st.download_button("⬇️ Exportar Excel", xls,
-                               "agenda_sanitaria.xlsx",
-                               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        else:
-            st.info("Nenhuma vacina agendada.")
-
-    with tab2:
-        st.subheader("Agendar Vacina / Medicação")
-        lotes = listar_lotes()
-        if not lotes:
-            st.warning("Cadastre um lote primeiro.")
-        else:
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            with st.form("form_vacina"):
-                lote_sel = st.selectbox("Lote", list(dict_l.keys()))
-                nome_vac = st.text_input("Nome da vacina / procedimento")
-                data_prev = st.date_input("Data prevista", value=date.today() + timedelta(days=7))
-                obs = st.text_area("Observação")
-                if st.form_submit_button("Agendar"):
-                    if nome_vac:
-                        adicionar_vacina_agenda(dict_l[lote_sel], nome_vac, str(data_prev), obs)
-                        st.success("Vacina agendada!")
-                        st.rerun()
-                    else:
-                        st.error("Informe o nome da vacina.")
-
-    with tab3:
-        st.subheader("Registrar Vacina Realizada")
-        pendentes = listar_vacinas_pendentes()
-        if not pendentes:
-            st.success("Nenhuma vacina pendente.")
-        else:
-            df_p = pd.DataFrame(pendentes,
-                                columns=["ID","Lote ID","Lote","Vacina","Previsto","Status","Obs"])
-            opcoes_v = {f"{r['Vacina']} -- {r['Lote']} (prev. {r['Previsto']})": r["ID"]
-                        for _, r in df_p.iterrows()}
-            with st.form("form_real"):
-                sel = st.selectbox("Vacina", list(opcoes_v.keys()))
-                data_real = st.date_input("Data de realização", value=date.today())
-                if st.form_submit_button("Confirmar Realização"):
-                    registrar_vacina_realizada(opcoes_v[sel], str(data_real))
-                    st.success("Registrado!")
-                    st.rerun()
-
-# ===========================================================================
-# ESTOQUE DE MEDICAMENTOS
-# ===========================================================================
-elif menu == "Estoque de Medicamentos":
-    _page_header("💊", "Estoque de Medicamentos", "Controle de estoque, validade e uso")
-
-    tab1, tab2, tab3 = st.tabs(["📦 Estoque Atual", "➕ Cadastrar", "💉 Registrar Uso"])
-
-    with tab1:
-        meds = listar_medicamentos()
-        criticos = listar_medicamentos_criticos()
-
-        if criticos:
-            st.error(f"🚨 {len(criticos)} medicamento(s) em alerta de estoque ou validade:")
-            for m in criticos:
-                motivo = "estoque baixo" if m[3] <= m[4] else f"vence em {m[5]}"
-                st.warning(f"⚠️ {m[1]} -- {m[3]:.1f} {m[2]} ({motivo})")
-
-        if meds:
-            df_m = pd.DataFrame(meds,
-                                columns=["ID","Nome","Unidade","Estoque Atual",
-                                         "Estoque Mínimo","Validade","Custo Unit. R$"])
-            st.dataframe(df_m, use_container_width=True)
-
-            col1, col2 = st.columns(2)
-            valor_total = sum(m[3] * m[6] for m in meds)
-            col1.metric("💰 Valor total em estoque", f"R$ {valor_total:.2f}")
-            col2.metric("📦 Itens cadastrados", len(meds))
-
-            # Exportar
-            vacinas_todas = listar_vacinas_agenda()
-            xls = gerar_excel_sanitario(vacinas_todas, meds)
-            st.download_button("⬇️ Exportar Excel", xls,
-                               "estoque_medicamentos.xlsx",
-                               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        else:
-            st.info("Nenhum medicamento cadastrado.")
-
-    with tab2:
-        with st.form("form_med"):
-            nome_m = st.text_input("Nome do medicamento")
-            unid   = st.selectbox("Unidade", ["dose","mL","g","comprimido","frasco","kg"])
-            estq   = st.number_input("Estoque inicial", 0.0, step=1.0)
-            est_min = st.number_input("Estoque mínimo (alerta)", 0.0, step=1.0)
-            valid  = st.date_input("Validade")
-            custo  = st.number_input("Custo unitário (R$)", 0.0)
-            if st.form_submit_button("Cadastrar"):
-                if nome_m:
-                    adicionar_medicamento(nome_m, unid, estq, est_min, str(valid), custo)
-                    st.success("Medicamento cadastrado!")
-                    st.rerun()
-                else:
-                    st.error("Informe o nome.")
-
-    with tab3:
-        meds = listar_medicamentos()
-        lotes = listar_lotes()
-        if not meds:
-            st.warning("Cadastre medicamentos primeiro.")
-        elif not lotes:
-            st.warning("Cadastre um lote primeiro.")
-        else:
-            dict_m = {f"{m[1]} ({m[3]:.1f} {m[2]})": m[0] for m in meds}
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            with st.form("form_uso"):
-                med_sel  = st.selectbox("Medicamento", list(dict_m.keys()))
-                lote_sel = st.selectbox("Lote", list(dict_l.keys()))
-                animais  = listar_animais_por_lote(dict_l[lote_sel])
-                dict_a   = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-                anim_sel = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["--"])
-                qtd_uso  = st.number_input("Quantidade utilizada", 0.01, step=0.5)
-                data_uso = st.date_input("Data")
-                if st.form_submit_button("Registrar Uso") and dict_a:
-                    registrar_uso_medicamento(
-                        dict_m[med_sel], dict_a[anim_sel], str(data_uso), qtd_uso
-                    )
-                    st.success("Uso registrado e estoque atualizado!")
-                    st.rerun()
-
-# ===========================================================================
-# CONTROLE REPRODUTIVO
-# ===========================================================================
-elif menu == "Controle Reprodutivo":
-    _page_header("🐄", "Controle Reprodutivo", "IATF, diagnóstico, prenhez e partos")
-
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["📊 Indicadores", "➕ Registrar Cobertura", "✏️ Atualizar Diagnóstico", "🗓️ Partos Previstos"]
-    )
-
-    with tab1:
-        lotes = listar_lotes()
-        if not lotes:
-            st.warning("Nenhum lote cadastrado.")
-        else:
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            lote_sel = st.selectbox("Lote", list(dict_l.keys()), key="rep_lote")
-            lote_id = dict_l[lote_sel]
-
-            tp = taxa_prenhez_lote(lote_id)
-            col1, col2, col3 = st.columns(3)
-            col1.metric("🐄 Animais com registro", tp["total"])
-            col2.metric("✅ Gestações confirmadas", tp["positivas"])
-            col3.metric("📊 Taxa de prenhez", f"{tp['taxa']:.1f}%")
-
-            animais = listar_animais_por_lote(lote_id)
-            dados = []
-            for a in animais:
-                repros = listar_reproducao(a[0])
-                if repros:
-                    r = repros[0]
-                    dados.append({
-                        "Animal": a[1],
-                        "Tipo": r[3],
-                        "Data Cio": r[2] or "--",
-                        "Diagnóstico": r[4] or "--",
-                        "Resultado": r[5],
-                        "Parto Previsto": r[6] or "--",
-                        "Parto Real": r[7] or "--",
-                    })
-            if dados:
-                st.dataframe(pd.DataFrame(dados), use_container_width=True)
-            else:
-                st.info("Nenhum registro reprodutivo neste lote.")
-
-    with tab2:
-        lotes = listar_lotes()
-        if not lotes:
-            st.warning("Nenhum lote cadastrado.")
-        else:
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            with st.form("form_cobertura"):
-                lote_s = st.selectbox("Lote", list(dict_l.keys()))
-                animais = listar_animais_por_lote(dict_l[lote_s])
-                dict_a  = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-                anim_s  = st.selectbox("Animal", list(dict_a.keys()) if dict_a else ["--"])
-                tipo_c  = st.selectbox("Tipo de cobertura", ["IATF","Monta Natural","TE"])
-                data_cio = st.date_input("Data do cio / IATF")
-                obs_r    = st.text_area("Observação")
-                if st.form_submit_button("Registrar") and dict_a:
-                    adicionar_reproducao(dict_a[anim_s], tipo_c,
-                                         data_cio=str(data_cio), observacao=obs_r)
-                    st.success("Cobertura registrada!")
-                    st.rerun()
-
-    with tab3:
-        lotes = listar_lotes()
-        if lotes:
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            lote_s = st.selectbox("Lote", list(dict_l.keys()), key="rep_upd_lote")
-            animais = listar_animais_por_lote(dict_l[lote_s])
-            dict_a  = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-            if dict_a:
-                anim_s = st.selectbox("Animal", list(dict_a.keys()), key="rep_upd_anim")
-                repros = listar_reproducao(dict_a[anim_s])
-                if repros:
-                    r = repros[0]
-                    st.info(f"Último registro: tipo={r[3]}, resultado atual={r[5]}")
-                    with st.form("form_diag"):
-                        resultado  = st.selectbox("Resultado diagnóstico",
-                                                   ["pendente","positivo","negativo"])
-                        data_diag  = st.date_input("Data do diagnóstico")
-                        parto_prev = st.date_input("Parto previsto (se positivo)",
-                                                    value=date.today() + timedelta(days=283))
-                        if st.form_submit_button("Salvar Diagnóstico"):
-                            atualizar_reproducao(r[0], resultado,
-                                                  data_diagnostico=str(data_diag),
-                                                  data_parto_previsto=str(parto_prev)
-                                                  if resultado == "positivo" else None)
-                            st.success("Diagnóstico atualizado!")
-                            st.rerun()
-                else:
-                    st.info("Sem registros reprodutivos para este animal.")
-
-    with tab4:
-        partos = listar_partos_previstos()
-        if partos:
-            st.warning(f"🗓️ {len(partos)} parto(s) previstos nos próximos 30 dias:")
-            df_p = pd.DataFrame(partos,
-                                columns=["ID","Animal","Lote","Parto Previsto","Tipo"])
-            st.dataframe(df_p, use_container_width=True)
-        else:
-            st.success("Nenhum parto previsto para os próximos 30 dias.")
-
-# ===========================================================================
-# MAPA DE PIQUETES
-# ===========================================================================
-elif menu == "Mapa de Piquetes":
-    _page_header("🌿", "Mapa de Piquetes", "Alocação de lotes e histórico de ocupação")
-
-    tab1, tab2, tab3 = st.tabs(["📋 Piquetes", "➕ Cadastrar", "🔄 Alocar / Liberar"])
-
-    with tab1:
-        piquetes = listar_piquetes()
-        if piquetes:
-            df_pq = pd.DataFrame(piquetes,
-                                  columns=["ID","Fazenda ID","Nome","Área (ha)","Cap. UA"])
-            st.dataframe(df_pq, use_container_width=True)
-
-            col1, col2 = st.columns(2)
-            col1.metric("🌿 Total de piquetes", len(piquetes))
-            area_total = sum(p[3] for p in piquetes)
-            col2.metric("📐 Área total (ha)", f"{area_total:.1f}")
-
-            st.subheader("📜 Histórico de ocupação")
-            dict_pq = {f"{p[2]} (ID {p[0]})": p[0] for p in piquetes}
-            sel_pq = st.selectbox("Piquete", list(dict_pq.keys()))
-            hist = historico_piquete(dict_pq[sel_pq])
-            if hist:
-                df_h = pd.DataFrame(hist, columns=["ID","Lote","Entrada","Saída"])
-                st.dataframe(df_h, use_container_width=True)
-            else:
-                st.info("Nenhum histórico para este piquete.")
-        else:
-            st.info("Nenhum piquete cadastrado.")
-
-    with tab2:
-        with st.form("form_piquete"):
-            nome_pq = st.text_input("Nome do piquete")
-            area    = st.number_input("Área (ha)", 0.0, step=0.5)
-            cap_ua  = st.number_input("Capacidade (UA)", 0.0, step=1.0)
-            if st.form_submit_button("Cadastrar"):
-                if nome_pq:
-                    adicionar_piquete(nome_pq, area, cap_ua)
-                    st.success("Piquete cadastrado!")
-                    st.rerun()
-                else:
-                    st.error("Informe o nome.")
-
-    with tab3:
-        piquetes = listar_piquetes()
-        lotes    = listar_lotes()
-        if not piquetes or not lotes:
-            st.warning("Cadastre piquetes e lotes primeiro.")
-        else:
-            dict_pq = {f"{p[2]} (ID {p[0]})": p[0] for p in piquetes}
-            dict_l  = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            col1, col2 = st.columns(2)
-            with col1:
-                st.subheader("Alocar lote")
-                with st.form("form_alocar"):
-                    pq_sel  = st.selectbox("Piquete", list(dict_pq.keys()), key="al_pq")
-                    lt_sel  = st.selectbox("Lote", list(dict_l.keys()), key="al_lt")
-                    dt_ent  = st.date_input("Data de entrada", key="al_dt")
-                    if st.form_submit_button("Alocar"):
-                        alocar_lote_piquete(dict_pq[pq_sel], dict_l[lt_sel], str(dt_ent))
-                        st.success("Lote alocado!")
-                        st.rerun()
-            with col2:
-                st.subheader("Liberar piquete")
-                with st.form("form_liberar"):
-                    pq_sel2 = st.selectbox("Piquete", list(dict_pq.keys()), key="lib_pq")
-                    dt_said = st.date_input("Data de saída", key="lib_dt")
-                    if st.form_submit_button("Liberar"):
-                        liberar_piquete(dict_pq[pq_sel2], str(dt_said))
-                        st.success("Piquete liberado!")
-                        st.rerun()
-
-# ===========================================================================
-# EXPORTAR RELATÓRIOS
-# ===========================================================================
-elif menu == "Exportar Relatórios":
-    _page_header("📄", "Exportar Relatórios", "PDF e Excel do lote, sanitário e estoque")
-
-    lotes = listar_lotes()
-    if not lotes:
-        st.warning("Nenhum lote cadastrado.")
-        st.stop()
-
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()))
-    lote_id  = dict_l[lote_sel]
-    nome_lote = lote_sel.split(" (ID")[0]
-
-    animais = listar_animais_por_lote(lote_id)
-    pesagens_dict    = {a[0]: listar_pesagens(a[0])    for a in animais}
-    ocorrencias_dict = {a[0]: listar_ocorrencias(a[0]) for a in animais}
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("📊 Excel -- Dados do Lote")
-        st.write("Abas: Resumo, Animais, Pesagens, Ocorrências")
-        if st.button("Gerar Excel"):
-            xls = gerar_excel_lote(nome_lote, animais, pesagens_dict, ocorrencias_dict)
-            st.download_button(
-                "⬇️ Baixar Excel",
-                xls,
-                f"lote_{nome_lote.replace(' ','_')}.xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-
-    with col2:
-        st.subheader("📋 PDF -- Relatório do Lote")
-        st.write("Resumo + tabelas de animais, pesagens e ocorrências")
-        if st.button("Gerar PDF"):
-            df_anim = pd.DataFrame(animais, columns=["ID","Identificação","Idade","Lote ID"])
-
-            todos_pesos = [p for ps in pesagens_dict.values() for p in ps]
-            df_peso = pd.DataFrame(todos_pesos,
-                                    columns=["ID","Animal ID","Peso (kg)","Data"]) if todos_pesos else pd.DataFrame()
-
-            todos_oc = [o for ocs in ocorrencias_dict.values() for o in ocs]
-            df_oc = pd.DataFrame(todos_oc,
-                                  columns=["ID","Animal ID","Data","Tipo","Descrição",
-                                           "Gravidade","Custo","Dias","Status"]) if todos_oc else pd.DataFrame()
-
-            secoes = [
-                {"titulo": "Animais do lote",  "df": df_anim},
-                {"titulo": "Histórico de pesagens", "df": df_peso},
-                {"titulo": "Ocorrências registradas", "df": df_oc},
-            ]
-            pdf = gerar_pdf_relatorio(f"Relatório -- {nome_lote}", secoes)
-            st.download_button(
-                label="⬇️ Baixar PDF",
-                data=pdf,
-                file_name=f"relatorio_{nome_lote.replace(' ','_')}.pdf",
-                mime="application/pdf",
-                key="dl_pdf_relatorio",
-            )
-
-    st.divider()
-    st.subheader("💊 Excel -- Calendário Sanitário e Medicamentos")
-    if st.button("Gerar Excel Sanitário"):
-        vacinas = listar_vacinas_agenda()
-        meds    = listar_medicamentos()
-        xls = gerar_excel_sanitario(vacinas, meds)
-        st.download_button(
-            "⬇️ Baixar Excel Sanitário",
-            xls,
-            "sanitario.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-
-# ===========================================================================
-# ADMINISTRAÇÃO
-# ===========================================================================
-elif menu == "Administração":
-    _page_header("⚙️", "Administração", "Usuários, planos e configurações")
-
-    # Só admin vê tudo; outros veem apenas alterar senha
-    is_admin = u["perfil"] == "admin"
-
-    tab1, tab2 = st.tabs(["👤 Usuários", "🔑 Alterar Minha Senha"])
-
-    with tab1:
-        if not is_admin:
-            st.warning("Acesso restrito a administradores.")
-        else:
-            st.subheader("Usuários cadastrados")
-            usuarios = listar_usuarios()
-            if usuarios:
-                df_u = pd.DataFrame(usuarios,
-                                     columns=["ID","Nome","E-mail","Perfil","Fazenda ID"])
-                st.dataframe(df_u, use_container_width=True)
-
-            st.subheader("Criar novo usuário")
-            with st.form("form_novo_user"):
-                n_nome   = st.text_input("Nome")
-                n_email  = st.text_input("E-mail")
-                n_senha  = st.text_input("Senha", type="password")
-                n_perfil = st.selectbox("Perfil", ["fazendeiro","veterinario","admin"])
-                if st.form_submit_button("Criar"):
-                    if n_nome and n_email and n_senha:
-                        try:
-                            criar_usuario(n_nome, n_email, n_senha, n_perfil)
-                            st.success("Usuário criado!")
-                            st.rerun()
-                        except Exception:
-                            st.error("E-mail já cadastrado.")
-                    else:
-                        st.error("Preencha todos os campos.")
-
-    with tab2:
-        with st.form("form_senha"):
-            senha_atual = st.text_input("Senha atual", type="password")
-            nova_senha  = st.text_input("Nova senha", type="password")
-            conf_senha  = st.text_input("Confirmar nova senha", type="password")
-            if st.form_submit_button("Alterar Senha"):
-                if not autenticar_usuario(u["email"], senha_atual):
-                    st.error("Senha atual incorreta.")
-                elif nova_senha != conf_senha:
-                    st.error("As senhas não coincidem.")
-                elif len(nova_senha) < 6:
-                    st.error("Senha deve ter ao menos 6 caracteres.")
-                else:
-                    alterar_senha(u["id"], nova_senha)
-                    st.success("Senha alterada com sucesso!")
-
-# ===========================================================================
-# PREVISÃO DE ABATE
-# ===========================================================================
-elif menu == "Previsão de Abate":
-    _page_header("🥩", "Previsão de Abate", "Data estimada e receita projetada por GMD")
-
-    lotes = listar_lotes()
-    if not lotes:
-        st.warning("Nenhum lote cadastrado.")
-        st.stop()
-
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()))
-    lote_id  = dict_l[lote_sel]
-    animais  = listar_animais_por_lote(lote_id)
-
-    if not animais:
-        st.warning("Nenhum animal neste lote.")
-        st.stop()
-
-    st.info("💡 Defina o peso alvo em **Prontuário do Animal** para cada animal antes de usar esta tela.")
-
-    preco_kg = st.number_input("Preço do kg no abate (R$)", 0.0, 100.0, 20.0)
-
-    resultados = []
-    prontos_email = []
-
-    for a in animais:
-        prev = calcular_previsao_abate(a[0])
-        if "erro" not in prev:
-            resultados.append({
-                "Animal": a[1],
-                "Peso Atual (kg)": prev["peso_atual"],
-                "Peso Alvo (kg)": prev["peso_alvo"],
-                "GMD (kg/dia)": prev["gmd"],
-                "Dias Restantes": prev["dias_restantes"],
-                "Data Prevista": prev["data_prevista"],
-                "Receita Estimada (R$)": round(prev["peso_alvo"] * preco_kg, 2),
-                "Confiança": prev["confianca"],
-            })
-            if prev["dias_restantes"] <= 30:
-                prontos_email.append({
-                    "animal": a[1], "lote": lote_sel.split(" (ID")[0],
-                    "peso_atual": prev["peso_atual"], "peso_alvo": prev["peso_alvo"],
-                    "data_prevista": prev["data_prevista"],
-                })
-
-    if resultados:
-        df_prev = pd.DataFrame(resultados).sort_values("Dias Restantes")
-        st.dataframe(df_prev, use_container_width=True)
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("🐄 Animais analisados", len(resultados))
-        col2.metric("⏳ Prontos em ≤30 dias", len(prontos_email))
-        receita_total = sum(r["Receita Estimada (R$)"] for r in resultados)
-        col3.metric("💰 Receita total estimada", f"R$ {receita_total:,.2f}")
-
-        # Gráfico de barras: dias restantes por animal
-        df_chart = df_prev.set_index("Animal")[["Dias Restantes"]]
-        st.subheader("📊 Dias até o peso de abate por animal")
-        st.bar_chart(df_chart)
-
-        # Alertas
-        st.subheader("🚨 Alertas")
-        for r in resultados:
-            if r["Dias Restantes"] == 0:
-                st.success(f"✅ {r['Animal']}: já atingiu o peso alvo!")
-            elif r["Dias Restantes"] <= 15:
-                st.warning(f"🟡 {r['Animal']}: {r['Dias Restantes']} dias -- prepare o abate")
-            elif r["Confiança"] == "baixa":
-                st.info(f"ℹ️ {r['Animal']}: previsão com baixa confiança (poucas pesagens)")
-
-        # Notificação por e-mail
-        if prontos_email and email_configurado():
-            if st.button("📧 Enviar alerta de abate por e-mail"):
-                ok, msg = email_abate_previsto(u["email"], u["nome"], prontos_email)
-                st.success(msg) if ok else st.warning(msg)
-    else:
-        st.info("Nenhum animal com peso alvo definido e pesagens suficientes.\n\nDefina o peso alvo em **Prontuário do Animal**.")
-
-# ===========================================================================
-# PRONTUÁRIO DO ANIMAL
-# ===========================================================================
-elif menu == "Prontuário do Animal":
-    _page_header("📋", "Prontuário do Animal", "Histórico completo: peso, saúde e reprodução")
-
-    lotes = listar_lotes()
-    if not lotes:
-        st.warning("Nenhum lote cadastrado.")
-        st.stop()
-
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    lote_sel = st.selectbox("Lote", list(dict_l.keys()))
-    animais  = listar_animais_por_lote(dict_l[lote_sel])
-
-    if not animais:
-        st.warning("Nenhum animal neste lote.")
-        st.stop()
-
-    dict_a   = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-    anim_sel = st.selectbox("Animal", list(dict_a.keys()))
-    animal_id = dict_a[anim_sel]
-
-    det = obter_animal(animal_id)
-
-    tab1, tab2, tab3 = st.tabs(["📋 Dados", "⚖️ Pesagens", "🚨 Ocorrências"])
-
-    with tab1:
-        st.subheader("Informações do Animal")
-        with st.form("form_prontuario"):
-            col1, col2 = st.columns(2)
-            with col1:
-                peso_alvo = st.number_input("Peso alvo de abate (kg)",
-                                             0.0, 1000.0,
-                                             float(det[7]) if det else 0.0)
-                sexo = st.selectbox("Sexo", ["indefinido","macho","fêmea"],
-                                    index=["indefinido","macho","fêmea"].index(
-                                        det[4] if det and det[4] in ["indefinido","macho","fêmea"] else "indefinido"))
-                raca = st.text_input("Raça", value=det[5] if det else "")
-            with col2:
-                obs = st.text_area("Observações clínicas",
-                                   value=det[8] if det else "", height=120)
-
-            if st.form_submit_button("💾 Salvar Prontuário"):
-                atualizar_animal_detalhes(animal_id,
-                                          peso_alvo=peso_alvo,
-                                          observacoes=obs)
-                st.success("Prontuário atualizado!")
+    st.caption("MENU")
+
+    GRUPOS = {
+        "Inicio": [
+            ("Inicio",          "Painel geral"),
+            ("Buscar Animal",   "Busca por brinco"),
+        ],
+        "Cadastros": [
+            ("Cadastrar Lote",       "Novo lote"),
+            ("Cadastrar Animal",     "Novo animal"),
+            ("Registrar Pesagem",    "Novo peso"),
+            ("Registrar Ocorrencia", "Nova ocorrencia"),
+            ("Registrar Morte",      "Baixa de animal"),
+            ("Importar CSV",         "Importacao em lote"),
+        ],
+        "Analise": [
+            ("Dashboard Sanitario",  "Incidencias e alertas"),
+            ("Analisar por Lote",    "GMD e financeiro"),
+            ("Analisar Animal",      "Individual"),
+            ("Score de Saude",       "Ranking 0-100"),
+            ("GMD Temporal",         "Evolucao no tempo"),
+            ("Comparativo Lotes",    "Side by side"),
+            ("Painel de Decisao",    "Lucro por lote"),
+            ("Dashboard Executivo",  "KPIs do lote"),
+            ("Pesquisar Ocorrencias","Filtros avancados"),
+        ],
+        "Gestao": [
+            ("Calendario Sanitario", "Vacinas e alertas"),
+            ("Estoque Medicamentos", "Controle de estoque"),
+            ("Controle Reprodutivo", "IATF e prenhez"),
+            ("Mapa Piquetes",        "Pastagens"),
+            ("Previsao Abate",       "Data estimada"),
+            ("Prontuario Animal",    "Historico completo"),
+            ("Margem Real",          "Compra x Venda"),
+            ("Cotacao Cepea",        "Preco boi gordo"),
+        ],
+        "Rastreabilidade": [
+            ("Rastreabilidade GTA",  "GTA e SISBOV"),
+        ],
+        "Relatorios": [
+            ("Exportar Relatorios",  "PDF e Excel"),
+            ("Backup",               "Download do banco"),
+        ],
+        "Sistema": [
+            ("Notificacoes",         "E-mail e alertas"),
+            ("Log Auditoria",        "Historico de acoes"),
+            ("Administracao",        "Usuarios e planos"),
+        ],
+    }
+
+    if "menu" not in st.session_state:
+        st.session_state.menu = "Inicio"
+
+    for grupo, itens in GRUPOS.items():
+        st.caption(grupo.upper())
+        for nome_item, desc in itens:
+            ativo = st.session_state.menu == nome_item
+            label = f"**{nome_item}**" if ativo else nome_item
+            if st.button(label, key=f"menu_{nome_item}", use_container_width=True, help=desc):
+                st.session_state.menu = nome_item
                 st.rerun()
+        st.write("")
 
-        # Previsão de abate inline
-        if det and det[7] > 0:
-            prev = calcular_previsao_abate(animal_id)
-            if "erro" not in prev:
-                st.divider()
-                st.subheader("🥩 Previsão de Abate")
-                c1, c2, c3 = st.columns(3)
-                c1.metric("GMD atual", f"{prev['gmd']:.3f} kg/dia")
-                c2.metric("Dias restantes", prev["dias_restantes"])
-                c3.metric("Data prevista", prev["data_prevista"])
-                if prev["confianca"] == "baixa":
-                    st.caption("⚠️ Confiança baixa -- registre mais pesagens para melhorar a previsão.")
+menu = st.session_state.menu
 
-    with tab2:
-        pesagens = listar_pesagens(animal_id)
-        if pesagens:
-            df_p = pd.DataFrame(pesagens, columns=["ID","Animal","Peso","Data"])
-            df_p["Data"] = pd.to_datetime(df_p["Data"])
-            df_p = df_p.sort_values("Data")
-            st.line_chart(df_p.set_index("Data")["Peso"])
-            st.dataframe(df_p, use_container_width=True)
-        else:
-            st.info("Nenhuma pesagem registrada.")
-
-    with tab3:
-        ocs = listar_ocorrencias(animal_id)
-        if ocs:
-            df_oc = pd.DataFrame(ocs, columns=["ID","Animal ID","Data","Tipo",
-                                                "Descrição","Gravidade","Custo",
-                                                "Dias Rec.","Status"])
-            st.dataframe(df_oc, use_container_width=True)
-            custo_total = sum(o[6] for o in ocs if o[6])
-            st.metric("💊 Custo total de tratamentos", f"R$ {custo_total:.2f}")
-        else:
-            st.success("✅ Nenhuma ocorrência registrada.")
-
-        # Histórico reprodutivo
-        repros = listar_reproducao(animal_id)
-        if repros:
-            st.subheader("🐄 Histórico Reprodutivo")
-            df_r = pd.DataFrame(repros, columns=["ID","Animal","Cio","Tipo",
-                                                   "Diagnóstico","Resultado",
-                                                   "Parto Previsto","Parto Real","Obs"])
-            st.dataframe(df_r, use_container_width=True)
-
-# ===========================================================================
-# NOTIFICAÇÕES
-# ===========================================================================
-elif menu == "Notificações":
-    _page_header("📧", "Notificações", "Alertas por e-mail e gestão de planos")
-
-    if not email_configurado():
-        st.warning("⚠️ E-mail não configurado.")
-        st.markdown('''
-        Para ativar as notificações, crie o arquivo `.streamlit/secrets.toml` com:
-        ```toml
-        [email]
-        smtp_host     = "smtp.gmail.com"
-        smtp_port     = 587
-        smtp_user     = "seu@gmail.com"
-        smtp_password = "senha_app_google"
-        remetente     = "Gestão Pecuária <seu@gmail.com>"
-        ```
-        Para Gmail, use uma **Senha de App** (não a senha da conta).
-        [Como criar →](https://support.google.com/accounts/answer/185833)
-        ''')
-        st.stop()
-
-    st.success("✅ E-mail configurado e pronto para envio.")
-
-    st.subheader("📤 Enviar alertas agora")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        # Vacinas pendentes
-        pendentes = listar_vacinas_pendentes()
-        st.metric("💉 Vacinas pendentes", len(pendentes))
-        if pendentes and st.button("Enviar alerta de vacinas"):
-            vacs = [{"lote": v[2], "vacina": v[3], "data_prevista": v[4]}
-                    for v in pendentes]
-            ok, msg = email_vacina_pendente(u["email"], u["nome"], vacs)
-            st.success(msg) if ok else st.error(msg)
-
-        # Partos previstos
-        partos = listar_partos_previstos()
-        st.metric("🐄 Partos previstos (30d)", len(partos))
-        if partos and st.button("Enviar alerta de partos"):
-            pts = [{"animal": p[1], "lote": p[2], "data_parto_previsto": p[3]}
-                   for p in partos]
-            ok, msg = email_parto_previsto(u["email"], u["nome"], pts)
-            st.success(msg) if ok else st.error(msg)
-
-    with col2:
-        # Medicamentos críticos
-        criticos = listar_medicamentos_criticos()
-        st.metric("💊 Medicamentos em alerta", len(criticos))
-        if criticos and st.button("Enviar alerta de medicamentos"):
-            meds = [{"nome": m[1], "estoque_atual": m[3],
-                     "unidade": m[2], "validade": m[5] or ""}
-                    for m in criticos]
-            ok, msg = email_medicamento_critico(u["email"], u["nome"], meds)
-            st.success(msg) if ok else st.error(msg)
-
-        # Trial expirando (só admin)
-        if u["perfil"] == "admin":
-            expirando = listar_usuarios_trial_expirando(dias=7)
-            st.metric("⏳ Trials expirando (7d)", len(expirando))
-            if expirando and st.button("Enviar avisos de trial"):
-                enviados = 0
-                for usr in expirando:
-                    from datetime import date as _dtoday
-                    dias = (_dtoday.fromisoformat(usr[3]) - _dtoday.today()).days if usr[3] else 0
-                    ok, _ = email_trial_expirando(usr[2], usr[1], dias)
-                    if ok: enviados += 1
-                st.success(f"Avisos enviados: {enviados}/{len(expirando)}")
-
-    st.divider()
-
-    # Administração do plano (só admin)
-    if u["perfil"] == "admin":
-        st.subheader("⚙️ Gestão de Planos")
-        usuarios = listar_usuarios()
-        if usuarios:
-            df_u = pd.DataFrame(usuarios, columns=["ID","Nome","E-mail","Perfil","Fazenda"])
-            st.dataframe(df_u, use_container_width=True)
-
-            with st.form("form_converter"):
-                uid_conv = st.number_input("ID do usuário para converter para PAGO", 1, step=1)
-                if st.form_submit_button("Converter para plano pago"):
-                    converter_para_pago(int(uid_conv))
-                    st.success(f"Usuário {uid_conv} convertido para plano pago!")
-                    st.rerun()
-
-# ===========================================================================
-# SEPARADOR AVANÇADO
-# ===========================================================================
-elif menu == "── Avançado ──":
-    st.info("Selecione um módulo avançado no menu lateral.")
-
-# ===========================================================================
-# HOME DASHBOARD
-# ===========================================================================
-elif menu == "Home Dashboard":
-    # Saudação dinâmica
+# ============================================================
+# INICIO
+# ============================================================
+if menu == "Inicio":
     hora = datetime.now().hour
-    saudacao = "Bom dia" if hora < 12 else "Boa tarde" if hora < 18 else "Boa noite"
-    st.markdown(f"## {saudacao}, **{u['nome']}** 👋")
-    st.caption(f"📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    sau  = "Bom dia" if hora < 12 else "Boa tarde" if hora < 18 else "Boa noite"
+    st.markdown(f"## {sau}, **{u['nome']}**")
+    st.caption(datetime.now().strftime("%d/%m/%Y %H:%M"))
     st.divider()
 
     lotes         = listar_lotes()
     animais_todos = listar_animais()
-    pendentes     = listar_vacinas_pendentes()
-    criticos      = listar_medicamentos_criticos()
-    partos        = listar_partos_previstos()
 
-    # --- KPIs ---
-    k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("📦 Lotes",            len(lotes))
-    k2.metric("🐄 Animais ativos",   len(animais_todos))
-    k3.metric("💉 Vacinas pendentes",len(pendentes),
-              delta="⚠️" if pendentes else None,
-              delta_color="inverse" if pendentes else "normal")
-    k4.metric("💊 Meds. críticos",   len(criticos),
-              delta="⚠️" if criticos else None,
-              delta_color="inverse" if criticos else "normal")
-    k5.metric("🐄 Partos em 30d",    len(partos))
+    k1,k2,k3,k4,k5 = st.columns(5)
+    k1.metric("Lotes",          len(lotes))
+    k2.metric("Animais ativos", len(animais_todos))
+    k3.metric("Vacinas pend.",  len(pend),  delta="atencao" if pend  else None, delta_color="inverse" if pend  else "normal")
+    k4.metric("Meds. criticos", len(crit),  delta="atencao" if crit  else None, delta_color="inverse" if crit  else "normal")
+    k5.metric("Partos 30d",     len(parto))
 
     st.divider()
+    ca, cb = st.columns([1,2])
 
-    # --- Cotação + Alertas ---
-    col_cot, col_alert = st.columns([1, 2])
-
-    with col_cot:
-        st.subheader("💰 Cotação do dia")
-        import database as _db_cot
-        cot = cotacao_com_cache(_db_cot)
+    with ca:
+        st.subheader("Cotacao do dia")
+        import database as _dbc
+        cot = cotacao_com_cache(_dbc)
         if cot["sucesso"]:
-            st.success(f"**R$ {cot['preco']:.2f} /@**")
-            st.caption(f"{cot['data']} · {cot['fonte']}")
+            st.success(f"R$ {cot['preco']:.2f} /@")
+            st.caption(f"{cot['data']} - {cot['fonte']}")
         else:
-            st.warning("Cotação indisponível")
-            with st.form("form_cot_home"):
-                pr_h = st.number_input("R$/@", 0.0, 1000.0, 195.0,
-                                        label_visibility="collapsed")
-                if st.form_submit_button("💾 Salvar cotação"):
-                    salvar_cotacao(str(date.today()), pr_h, "manual")
+            st.warning("Cotacao indisponivel")
+            with st.form("cot_home"):
+                pr = st.number_input("R$/@", 0.0, 1000.0, 195.0, label_visibility="collapsed")
+                if st.form_submit_button("Salvar"):
+                    salvar_cotacao(str(date.today()), pr, "manual")
                     st.rerun()
 
-    with col_alert:
-        st.subheader("🚨 Alertas")
-        if not pendentes and not criticos and not partos:
-            st.success("✅ Tudo em ordem! Nenhum alerta crítico hoje.")
-        if pendentes:
-            with st.expander(f"💉 {len(pendentes)} vacina(s) pendente(s)", expanded=True):
-                for v in pendentes[:5]:
-                    st.caption(f"• **{v[3]}** -- Lote: {v[2]} -- Previsto: {v[4]}")
-        if criticos:
-            with st.expander(f"💊 {len(criticos)} medicamento(s) em alerta", expanded=True):
-                for m in criticos[:5]:
-                    motivo = "estoque baixo" if m[3] <= m[4] else f"vence {m[5]}"
-                    st.caption(f"• **{m[1]}** -- {m[3]:.0f} {m[2]} ({motivo})")
-        if partos:
-            with st.expander(f"🐄 {len(partos)} parto(s) previsto(s)"):
-                for p in partos[:5]:
-                    st.caption(f"• **{p[1]}** -- Lote: {p[2]} -- {p[3]}")
+    with cb:
+        st.subheader("Alertas")
+        if not pend and not crit and not parto:
+            st.success("Tudo em ordem! Nenhum alerta critico.")
+        if pend:
+            with st.expander(f"Vacinas pendentes ({len(pend)})", expanded=True):
+                for v in pend[:5]: st.caption(f"- {v[3]} | Lote: {v[2]} | {v[4]}")
+        if crit:
+            with st.expander(f"Medicamentos em alerta ({len(crit)})", expanded=True):
+                for m in crit[:5]:
+                    mot = "estoque baixo" if m[3]<=m[4] else f"vence {m[5]}"
+                    st.caption(f"- {m[1]} | {m[3]:.0f} {m[2]} ({mot})")
+        if parto:
+            with st.expander(f"Partos previstos ({len(parto)})"):
+                for p in parto[:5]: st.caption(f"- {p[1]} | Lote: {p[2]} | {p[3]}")
 
     st.divider()
-
-    # --- Cards de lotes ---
-    st.subheader("📦 Seus lotes")
+    st.subheader("Seus lotes")
     if not lotes:
-        st.info("Nenhum lote cadastrado. Vá em **Cadastros → Cadastrar Lote**.")
+        st.info("Nenhum lote. Va em Cadastros > Cadastrar Lote.")
     else:
         ncols = min(3, len(lotes))
-        cols_lote = st.columns(ncols)
+        cols  = st.columns(ncols)
         for i, l in enumerate(lotes[:6]):
-            rs = resumo_lote(l[0])
-            ico = "🟢" if rs["ativos"] > 0 else "⚫"
+            rs   = resumo_lote(l[0])
+            ico  = "verde" if rs["ativos"] > 0 else "cinza"
             tags = []
-            if rs["mortos"]:           tags.append(f"💀 {rs['mortos']}")
-            if rs["vacinas_pendentes"]:tags.append(f"💉 {rs['vacinas_pendentes']}")
-            if rs["ocorrencias"]:      tags.append(f"🚨 {rs['ocorrencias']}")
-            tag_str = " · ".join(tags) if tags else "✅ sem alertas"
-            with cols_lote[i % ncols]:
-                linha1 = f"**{ico} {l[1]}**"
-                linha2 = f"🐄 {rs['ativos']} ativos · 📅 {l[3]}"
-                linha3 = f"_{tag_str}_"
-                st.markdown(linha1 + "  \n" + linha2 + "  \n" + linha3)
+            if rs["mortos"]:           tags.append(f"Mortes: {rs['mortos']}")
+            if rs["vacinas_pendentes"]:tags.append(f"Vac pend: {rs['vacinas_pendentes']}")
+            if rs["ocorrencias"]:      tags.append(f"Ocorr: {rs['ocorrencias']}")
+            tag_str = " | ".join(tags) if tags else "Sem alertas"
+            with cols[i % ncols]:
+                st.markdown(f"**{l[1]}**")
+                st.caption(f"Ativos: {rs['ativos']} | Entrada: {l[3]}")
+                st.caption(tag_str)
                 st.divider()
-        if len(lotes) > 6:
-            st.caption(f"... e mais {len(lotes)-6} lote(s).")
 
-    st.divider()
+    st.subheader("Acoes rapidas")
+    qa1,qa2,qa3,qa4 = st.columns(4)
+    if qa1.button("Novo Lote",        use_container_width=True): st.session_state.menu="Cadastrar Lote";       st.rerun()
+    if qa2.button("Registrar Peso",   use_container_width=True): st.session_state.menu="Registrar Pesagem";    st.rerun()
+    if qa3.button("Nova Ocorrencia",  use_container_width=True): st.session_state.menu="Registrar Ocorrencia"; st.rerun()
+    if qa4.button("Exportar",         use_container_width=True): st.session_state.menu="Exportar Relatorios";  st.rerun()
 
-    # --- Ações rápidas ---
-    st.subheader("⚡ Ações rápidas")
-    qa1, qa2, qa3, qa4 = st.columns(4)
-    if qa1.button("➕ Novo Lote",         use_container_width=True):
-        st.session_state["_nav"] = "Cadastrar Lote"; st.rerun()
-    if qa2.button("⚖️ Registrar Pesagem", use_container_width=True):
-        st.session_state["_nav"] = "Registrar Pesagem"; st.rerun()
-    if qa3.button("🚨 Nova Ocorrência",   use_container_width=True):
-        st.session_state["_nav"] = "Ocorrências Adversas"; st.rerun()
-    if qa4.button("📄 Exportar Relatório",use_container_width=True):
-        st.session_state["_nav"] = "Exportar Relatórios"; st.rerun()
-
-# ===========================================================================
-# BUSCA DE ANIMAL
-# ===========================================================================
-elif menu == "Busca de Animal":
-    _page_header("🔍", "Buscar Animal", "Encontre qualquer animal pelo brinco ou identificação")
-    termo = st.text_input("Digite a identificação (brinco, tag, nome...)",
-                           placeholder="Ex: BOI-001")
+# ============================================================
+# BUSCAR ANIMAL
+# ============================================================
+elif menu == "Buscar Animal":
+    hdr("Buscar Animal", "Busca Global", "Encontre qualquer animal pelo brinco ou identificacao")
+    termo = st.text_input("Identificacao / brinco", placeholder="Ex: BOI-001")
     if termo:
-        animais_todos = listar_animais()
-        encontrados = [a for a in animais_todos
-                       if termo.lower() in a[1].lower()]
+        encontrados = [a for a in listar_animais() if termo.lower() in a[1].lower()]
         if encontrados:
             st.success(f"{len(encontrados)} animal(is) encontrado(s)")
             for a in encontrados:
                 lote = obter_lote(a[3])
-                nome_lote = lote[1] if lote else "--"
-                with st.expander(f"🐄 {a[1]} -- Lote: {nome_lote}"):
+                nome_lote = lote[1] if lote else "?"
+                with st.expander(f"{a[1]} -- Lote: {nome_lote}"):
                     det = obter_animal(a[0])
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.write(f"**ID:** {a[0]}")
-                        st.write(f"**Idade:** {a[2]} meses")
-                        st.write(f"**Raça:** {det[5] if det else '--'}")
-                        st.write(f"**Peso alvo:** {det[7] if det else 0} kg")
-                    with col2:
+                    c1,c2 = st.columns(2)
+                    with c1:
+                        st.write(f"ID: {a[0]} | Idade: {a[2]} meses")
+                        if det: st.write(f"Raca: {det[5]} | Peso alvo: {det[7]} kg")
+                    with c2:
+                        ps = listar_pesagens(a[0])
                         ocs = listar_ocorrencias(a[0])
-                        ps  = listar_pesagens(a[0])
-                        st.write(f"**Pesagens:** {len(ps)}")
-                        st.write(f"**Ocorrências:** {len(ocs)}")
-                        sc = calcular_score_saude(a[0])
-                        st.write(f"**Score saúde:** {sc['score']}/100 ({sc['classificacao']})")
+                        sc  = calcular_score_saude(a[0])
+                        st.write(f"Pesagens: {len(ps)} | Ocorrencias: {len(ocs)}")
+                        st.write(f"Score saude: {sc['score']}/100 ({sc['classificacao']})")
                         car = verificar_carencia(a[0])
                         if car["em_carencia"]:
-                            st.warning(f"⚠️ Em carência até {car['liberado_em']}")
-                    if st.button(f"Abrir Prontuário", key=f"btn_{a[0]}"):
-                        st.session_state["animal_selecionado"] = a[0]
-                        st.info("Vá em Prontuário do Animal para ver o histórico completo.")
+                            st.warning(f"Em carencia ate {car['liberado_em']}")
         else:
             st.warning(f"Nenhum animal encontrado para '{termo}'")
 
-# ===========================================================================
-# MORTALIDADE
-# ===========================================================================
-elif menu == "Mortalidade":
-    _page_header("💀", "Mortalidade", "Baixa de animais com causa e custo da perda")
-    tab1, tab2 = st.tabs(["📋 Histórico", "➕ Registrar Morte"])
-
-    with tab1:
-        lotes = listar_lotes()
-        if lotes:
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            filtro = st.selectbox("Filtrar por lote", ["Todos"]+list(dict_l.keys()))
-            lote_id_f = dict_l.get(filtro) if filtro != "Todos" else None
-            morts = listar_mortalidade(lote_id_f)
-            if morts:
-                df_m = pd.DataFrame(morts, columns=["ID","Animal ID","Animal",
-                                                     "Data","Causa","Descrição","Custo Perda"])
-                st.dataframe(df_m, use_container_width=True)
-                col1,col2 = st.columns(2)
-                col1.metric("💀 Total de mortes", len(morts))
-                col2.metric("💸 Custo total perdas",
-                            f"R$ {sum(m[6] for m in morts if m[6]):.2f}")
-                if lote_id_f:
-                    tm = taxa_mortalidade_lote(lote_id_f)
-                    st.metric("📊 Taxa de mortalidade", f"{tm['taxa']:.1f}%")
+# ============================================================
+# CADASTRAR LOTE
+# ============================================================
+elif menu == "Cadastrar Lote":
+    hdr("Cadastrar Lote", "Novo Lote", "Registre um novo lote de animais")
+    c1,c2 = st.columns([2,1])
+    with c1:
+        with st.form("form_lote"):
+            st.markdown("#### Dados do lote")
+            col1,col2 = st.columns(2)
+            with col1:
+                nome         = st.text_input("Nome do lote *")
+                data_ent     = st.date_input("Data de entrada")
+                qtd_comp     = st.number_input("Qtd comprada", 0, step=1)
+                transporte   = st.text_input("Transportadora")
+            with col2:
+                descricao    = st.text_area("Descricao", height=70)
+                qtd_rec      = st.number_input("Qtd recebida", 0, step=1)
+                preco_anim   = st.number_input("Preco por animal (R$)", 0.0)
+            st.markdown("#### Manejo")
+            m1,m2 = st.columns(2)
+            with m1: tipo_alim = st.selectbox("Alimentacao", ["Pasto","Confinamento","Semi-confinamento"])
+            with m2: tipo_diet = st.selectbox("Dieta", ["Capim","Racao","Silagem","Misto"])
+            salvar = st.form_submit_button("Salvar Lote", use_container_width=True, type="primary")
+        if salvar:
+            if not nome:               st.error("Informe o nome do lote")
+            elif qtd_rec > qtd_comp:   st.error("Qtd recebida nao pode ser maior que comprada")
+            elif qtd_rec == 0:         st.error("Informe a quantidade recebida")
             else:
-                st.success("✅ Nenhuma morte registrada.")
+                lid = adicionar_lote(nome, descricao, str(data_ent), qtd_comp, qtd_rec, transporte)
+                registrar_auditoria(u["id"], "criar_lote", "lotes", lid, nome)
+                st.success(f"Lote **{nome}** criado!")
+                st.balloons()
+    with c2:
+        st.markdown("#### Dicas")
+        st.info("Use um nome facil de identificar, ex: Nelore Jan/25")
+        st.info("Qtd recebida pode ser menor que a comprada se houve perdas no transporte")
+        if qtd_comp > 0 and preco_anim > 0:
+            st.metric("Custo total estimado", f"R$ {preco_anim*qtd_comp:,.2f}")
 
-    with tab2:
+# ============================================================
+# CADASTRAR ANIMAL
+# ============================================================
+elif menu == "Cadastrar Animal":
+    hdr("Cadastrar Animal", "Novo Animal", "Vincule um animal a um lote")
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Cadastre um lote primeiro.")
+    else:
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        c_sel,c_info = st.columns([2,1])
+        with c_sel: lote_sel = st.selectbox("Lote", list(dict_l.keys()))
+        lote_id = dict_l[lote_sel]
+        lote    = obter_lote(lote_id)
+        total   = contar_animais_no_lote(lote_id)
+        vagas   = max(0, lote[5] - total)
+        with c_info:
+            st.metric("Cadastrados / Capacidade", f"{total} / {lote[5]}",
+                      delta=f"{vagas} vaga(s)" if vagas > 0 else "Lote cheio",
+                      delta_color="normal" if vagas > 0 else "inverse")
+        if total >= lote[5]:
+            st.error("Limite do lote atingido.")
+        else:
+            with st.form("form_animal"):
+                a1,a2,a3 = st.columns(3)
+                with a1: ident  = st.text_input("Brinco / Identificacao *", placeholder="BOI-001")
+                with a2: idade  = st.number_input("Idade (meses)", 0, 240, 24)
+                with a3: p_ent  = st.number_input("Peso entrada (kg)", 0.0)
+                b1,b2,b3 = st.columns(3)
+                with b1: raca   = st.text_input("Raca", placeholder="Nelore")
+                with b2: sexo   = st.selectbox("Sexo", ["indefinido","macho","femea"])
+                with b3: p_alvo = st.number_input("Peso alvo abate (kg)", 0.0)
+                salvar = st.form_submit_button("Cadastrar Animal", use_container_width=True, type="primary")
+            if salvar:
+                if not ident:
+                    st.error("Informe a identificacao do animal")
+                else:
+                    aid = adicionar_animal(ident, idade, lote_id)
+                    if p_alvo > 0: atualizar_animal_detalhes(aid, peso_alvo=p_alvo)
+                    registrar_auditoria(u["id"], "cadastro_animal", "animais", aid, ident)
+                    st.success(f"**{ident}** cadastrado no lote **{lote[1]}**!")
+                    st.rerun()
+
+# ============================================================
+# REGISTRAR PESAGEM
+# ============================================================
+elif menu == "Registrar Pesagem":
+    hdr("Registrar Pesagem", "Novo Peso", "Registre o peso atual de um animal")
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Cadastre um lote primeiro.")
+    else:
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        c1,c2 = st.columns(2)
+        with c1: lote_sel = st.selectbox("Lote", list(dict_l.keys()), key="pes_lote")
+        lote_id = dict_l[lote_sel]
+        animais = listar_animais_por_lote(lote_id)
+        if not animais:
+            st.warning("Nenhum animal neste lote.")
+        else:
+            dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+            with c2: anim_sel = st.selectbox("Animal", list(dict_a.keys()), key="pes_anim")
+            animal_id = dict_a[anim_sel]
+            ps_ant = listar_pesagens(animal_id)
+            if ps_ant:
+                ult = ps_ant[-1]
+                det = obter_animal(animal_id)
+                r1,r2,r3 = st.columns(3)
+                r1.metric("Ultimo peso", f"{ult[2]:.1f} kg", f"em {ult[3]}")
+                if det and det[7] > 0:
+                    falta = det[7] - ult[2]
+                    r2.metric("Peso alvo", f"{det[7]:.0f} kg", f"faltam {falta:.1f} kg" if falta>0 else "Atingido!")
+                if len(ps_ant) >= 2:
+                    df_r = pd.DataFrame(ps_ant, columns=["id","aid","peso","data"])
+                    df_r["data"] = pd.to_datetime(df_r["data"])
+                    df_r = df_r.sort_values("data")
+                    dias_r = (df_r["data"].iloc[-1]-df_r["data"].iloc[0]).days
+                    if dias_r > 0:
+                        gmd_r = (df_r["peso"].iloc[-1]-df_r["peso"].iloc[0])/dias_r
+                        r3.metric("GMD atual", f"{gmd_r:.3f} kg/dia")
+                st.divider()
+            with st.form("form_pesagem"):
+                p1,p2 = st.columns(2)
+                with p1: peso   = st.number_input("Peso (kg) *", 0.0, 1000.0, step=0.5)
+                with p2: data_p = st.date_input("Data")
+                salvar = st.form_submit_button("Salvar Pesagem", use_container_width=True, type="primary")
+            if salvar:
+                if peso <= 0:    st.error("Peso invalido")
+                elif peso > 1000: st.error("Peso muito alto")
+                else:
+                    adicionar_pesagem(animal_id, peso, str(data_p))
+                    registrar_auditoria(u["id"], "pesagem", "pesagens", animal_id, f"{peso}kg em {data_p}")
+                    st.success(f"Pesagem de **{peso:.1f} kg** registrada!")
+                    st.rerun()
+
+# ============================================================
+# REGISTRAR OCORRENCIA
+# ============================================================
+elif menu == "Registrar Ocorrencia":
+    hdr("Registrar Ocorrencia", "Nova Ocorrencia", "Doencas, lesoes e medicacoes")
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Cadastre um lote primeiro.")
+    else:
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        o1,o2 = st.columns(2)
+        with o1: lote_sel = st.selectbox("Lote", list(dict_l.keys()), key="oc_lote")
+        lote_id = dict_l[lote_sel]
+        animais = listar_animais_por_lote(lote_id)
+        if not animais:
+            st.warning("Nenhum animal neste lote.")
+        else:
+            dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+            with o2: anim_sel = st.selectbox("Animal", list(dict_a.keys()), key="oc_anim")
+            animal_id = dict_a[anim_sel]
+            with st.form("form_oc"):
+                oc1,oc2,oc3 = st.columns(3)
+                with oc1: data_oc  = st.date_input("Data")
+                with oc2: tipo_oc  = st.selectbox("Tipo", ["Doenca","Lesao","Medicamento","Outros"])
+                with oc3: grav_oc  = st.selectbox("Gravidade", ["Baixa","Media","Alta"])
+                desc_oc  = st.text_area("Descricao")
+                oc4,oc5,oc6 = st.columns(3)
+                with oc4: custo_oc = st.number_input("Custo (R$)", 0.0)
+                with oc5: dias_oc  = st.number_input("Dias recuperacao", 0)
+                with oc6: stat_oc  = st.selectbox("Status", ["Em tratamento","Resolvido"])
+                salvar = st.form_submit_button("Salvar Ocorrencia", use_container_width=True, type="primary")
+            if salvar:
+                oid = adicionar_ocorrencia(animal_id, str(data_oc), tipo_oc, desc_oc, grav_oc, custo_oc, dias_oc, stat_oc)
+                registrar_auditoria(u["id"], "ocorrencia", "ocorrencias", oid, f"{tipo_oc}/{grav_oc}")
+                st.success("Ocorrencia registrada!")
+                st.rerun()
+
+# ============================================================
+# REGISTRAR MORTE
+# ============================================================
+elif menu == "Registrar Morte":
+    hdr("Registrar Morte", "Baixa de Animal", "Registre a morte e retire o animal do lote")
+    tab1,tab2 = st.tabs(["Registrar", "Historico"])
+    with tab1:
         lotes = listar_lotes()
         if not lotes:
             st.warning("Cadastre um lote primeiro.")
         else:
             dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            # selectbox FORA do form para atualizar lista de animais dinamicamente
-            lote_sel_m = st.selectbox("Lote", list(dict_l.keys()),
-                                       key="morte_lote_sel")
+            lote_sel_m = st.selectbox("Lote", list(dict_l.keys()), key="morte_lote")
             lote_id_m  = dict_l[lote_sel_m]
             animais_m  = listar_animais_por_lote(lote_id_m)
-
             if not animais_m:
-                st.warning("Nenhum animal neste lote.")
+                st.warning("Nenhum animal ativo neste lote.")
             else:
-                dict_a_m = {f"{a[1]} (ID {a[0]})": a[0] for a in animais_m}
+                dict_am = {f"{a[1]} (ID {a[0]})": a[0] for a in animais_m}
                 with st.form("form_morte"):
-                    anim_sel   = st.selectbox("Animal", list(dict_a_m.keys()))
-                    data_morte = st.date_input("Data")
-                    causa      = st.selectbox("Causa",
-                                  ["Doença","Acidente","Desaparecimento",
-                                   "Predador","Outras"])
-                    desc_m     = st.text_area("Descrição")
-                    custo_p    = st.number_input("Custo da perda (R$)", 0.0)
-                    if st.form_submit_button("Registrar Morte"):
-                        registrar_morte(dict_a_m[anim_sel], str(data_morte),
-                                        causa, desc_m, custo_p)
-                        registrar_auditoria(u["id"], "morte_animal",
-                                            "animais", dict_a_m[anim_sel],
-                                            f"{anim_sel} -- {causa}")
-                        st.success("Morte registrada e animal baixado do lote.")
-                        st.rerun()
-
-# ===========================================================================
-# IMPORTAR DADOS
-# ===========================================================================
-elif menu == "Importar Dados":
-    _page_header("📥", "Importar Dados", "Importe pesagens e animais via planilha CSV")
-
-    lotes = listar_lotes()
-
-    # --- Seleção ou criação de lote ---
-    st.subheader("📦 Lote de destino")
-    opcao_lote = st.radio("O que deseja fazer?",
-                          ["Usar lote existente", "Criar novo lote agora"],
-                          horizontal=True, key="import_opcao_lote")
-
-    lote_id = None
-
-    if opcao_lote == "Criar novo lote agora":
-        with st.form("form_novo_lote_import"):
-            col1, col2 = st.columns(2)
-            with col1:
-                nome_nl    = st.text_input("Nome do lote *")
-                qtd_comp   = st.number_input("Qtd comprada", 0, step=1)
-                qtd_rec    = st.number_input("Qtd recebida", 0, step=1)
-            with col2:
-                data_nl    = st.date_input("Data de entrada")
-                transp_nl  = st.text_input("Transportadora")
-                desc_nl    = st.text_area("Descrição")
-            if st.form_submit_button("✅ Criar lote e continuar"):
-                if nome_nl:
-                    lote_id = adicionar_lote(nome_nl, desc_nl, str(data_nl),
-                                             qtd_comp, qtd_rec, transp_nl)
-                    registrar_auditoria(u["id"], "criar_lote", "lotes",
-                                        lote_id, nome_nl)
-                    st.success(f"Lote '{nome_nl}' criado! Agora faça o upload do CSV abaixo.")
+                    anim_sel_m = st.selectbox("Animal", list(dict_am.keys()))
+                    m1,m2 = st.columns(2)
+                    with m1:
+                        data_m  = st.date_input("Data")
+                        causa_m = st.selectbox("Causa", ["Doenca","Acidente","Desaparecimento","Predador","Outras"])
+                    with m2:
+                        custo_m = st.number_input("Custo da perda (R$)", 0.0)
+                        desc_m  = st.text_area("Descricao")
+                    salvar = st.form_submit_button("Registrar Morte", use_container_width=True, type="primary")
+                if salvar:
+                    registrar_morte(dict_am[anim_sel_m], str(data_m), causa_m, desc_m, custo_m)
+                    registrar_auditoria(u["id"], "morte_animal", "animais", dict_am[anim_sel_m], f"{anim_sel_m} - {causa_m}")
+                    st.success("Morte registrada. Animal removido do lote.")
                     st.rerun()
-                else:
-                    st.error("Informe o nome do lote.")
-        # Após criar, pega o lote mais recente
+    with tab2:
         lotes = listar_lotes()
         if lotes:
-            lote_id = lotes[0][0]
-            st.info(f"Lote selecionado: **{lotes[0][1]}**")
+            dict_l2 = {"Todos": None, **{f"{l[1]} (ID {l[0]})": l[0] for l in lotes}}
+            filtro_m = st.selectbox("Filtrar por lote", list(dict_l2.keys()), key="mort_hist")
+            morts = listar_mortalidade(dict_l2[filtro_m])
+            if morts:
+                df_m = pd.DataFrame(morts, columns=["ID","Animal ID","Animal","Data","Causa","Descricao","Custo Perda"])
+                st.dataframe(df_m, use_container_width=True)
+                st.metric("Custo total perdas", f"R$ {sum(m[6] for m in morts if m[6]):.2f}")
+            else:
+                st.success("Nenhuma morte registrada.")
+
+# ============================================================
+# IMPORTAR CSV
+# ============================================================
+elif menu == "Importar CSV":
+    hdr("Importar CSV", "Importacao em Lote", "Importe pesagens e animais via planilha CSV")
+    lotes = listar_lotes()
+    st.subheader("Lote de destino")
+    opcao = st.radio("", ["Usar lote existente","Criar novo lote"], horizontal=True, key="imp_op")
+    lote_id = None
+    if opcao == "Criar novo lote":
+        with st.form("form_lote_imp"):
+            ci1,ci2 = st.columns(2)
+            with ci1:
+                nome_nl = st.text_input("Nome do lote *")
+                qtd_c2  = st.number_input("Qtd comprada", 0, step=1)
+                qtd_r2  = st.number_input("Qtd recebida", 0, step=1)
+            with ci2:
+                data_nl = st.date_input("Data entrada")
+                trp_nl  = st.text_input("Transportadora")
+            if st.form_submit_button("Criar lote"):
+                if nome_nl:
+                    lote_id = adicionar_lote(nome_nl, "", str(data_nl), qtd_c2, qtd_r2, trp_nl)
+                    registrar_auditoria(u["id"], "criar_lote", "lotes", lote_id, nome_nl)
+                    st.success(f"Lote '{nome_nl}' criado!")
+                    st.rerun()
+                else: st.error("Informe o nome.")
+        lotes = listar_lotes()
+        if lotes: lote_id = lotes[0][0]; st.info(f"Lote: {lotes[0][1]}")
     else:
-        if not lotes:
-            st.warning("Nenhum lote cadastrado. Selecione 'Criar novo lote agora'.")
-            st.stop()
-        dict_l   = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-        lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()),
-                                 key="import_lote_sel")
-        lote_id  = dict_l[lote_sel]
+        if not lotes: st.warning("Crie um lote primeiro."); st.stop()
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        lote_id = dict_l[st.selectbox("Selecione o lote", list(dict_l.keys()), key="imp_lote")]
 
-    if not lote_id:
-        st.stop()
-
+    if not lote_id: st.stop()
     st.divider()
-    tab1, tab2 = st.tabs(["⚖️ Importar Pesagens", "🐄 Importar Animais"])
+    tab_p,tab_a = st.tabs(["Importar Pesagens","Importar Animais"])
 
-    with tab1:
-        st.markdown('''
-        **Formato esperado do CSV:**
-        ```
-        identificacao,peso,data
-        BOI-001,310.5,2024-01-15
-        BOI-002,295.0,2024-01-15
-        ```
-        ''')
-        arq = st.file_uploader("Selecione o arquivo CSV", type=["csv"], key="csv_pesagens")
+    with tab_p:
+        st.markdown("**Formato CSV:**")
+        st.code("identificacao,peso,data\nBOI-001,310.5,2024-01-15")
+        arq = st.file_uploader("CSV de pesagens", type=["csv"], key="csv_pes")
         if arq:
-            import csv as csv_mod, io as io_mod
-            texto = arq.read().decode("utf-8-sig", errors="ignore")
-            reader = csv_mod.DictReader(io_mod.StringIO(texto))
-            linhas = list(reader)
-            st.info(f"{len(linhas)} linha(s) encontradas no arquivo.")
+            import csv, io as _io
+            txt = arq.read().decode("utf-8-sig", errors="ignore")
+            linhas = list(csv.DictReader(_io.StringIO(txt)))
+            st.info(f"{len(linhas)} linhas encontradas.")
             if st.button("Importar pesagens"):
                 res = importar_pesagens_csv(linhas, lote_id)
-                registrar_auditoria(u["id"], "import_pesagens", "pesagens",
-                                    lote_id, f"{res['importados']} importadas")
-                st.success(f"✅ {res['importados']} pesagens importadas | "
-                           f"🆕 {res['animais_criados']} animais criados | "
-                           f"❌ {res['erros']} erros")
-                for msg in res["mensagens"]:
-                    st.warning(msg)
+                registrar_auditoria(u["id"], "import_pesagens", "pesagens", lote_id, f"{res['importados']} importadas")
+                st.success(f"Importadas: {res['importados']} | Animais criados: {res['animais_criados']} | Erros: {res['erros']}")
+                for msg in res["mensagens"]: st.warning(msg)
 
-    with tab2:
-        st.markdown('''
-        **Formato esperado do CSV:**
-        ```
-        identificacao,idade,raca,sexo,peso_entrada,peso_alvo
-        BOI-001,24,Nelore,macho,280,450
-        ```
-        Apenas `identificacao` é obrigatório.
-        ''')
-        arq2 = st.file_uploader("Selecione o arquivo CSV", type=["csv"], key="csv_animais")
+    with tab_a:
+        st.markdown("**Formato CSV:**")
+        st.code("identificacao,idade,raca,sexo,peso_alvo\nBOI-001,24,Nelore,macho,450")
+        arq2 = st.file_uploader("CSV de animais", type=["csv"], key="csv_anim")
         if arq2:
-            import csv as csv_mod, io as io_mod
-            texto2 = arq2.read().decode("utf-8-sig", errors="ignore")
-            reader2 = csv_mod.DictReader(io_mod.StringIO(texto2))
-            linhas2 = list(reader2)
-            st.info(f"{len(linhas2)} linha(s) encontradas.")
+            import csv, io as _io
+            txt2 = arq2.read().decode("utf-8-sig", errors="ignore")
+            linhas2 = list(csv.DictReader(_io.StringIO(txt2)))
+            st.info(f"{len(linhas2)} linhas encontradas.")
             if st.button("Importar animais"):
                 res2 = importar_animais_csv(linhas2, lote_id)
-                registrar_auditoria(u["id"], "import_animais", "animais",
-                                    lote_id, f"{res2['importados']} importados")
-                st.success(f"✅ {res2['importados']} animais importados | "
-                           f"❌ {res2['erros']} erros")
-                for msg in res2["mensagens"]:
-                    st.warning(msg)
+                registrar_auditoria(u["id"], "import_animais", "animais", lote_id, f"{res2['importados']} importados")
+                st.success(f"Importados: {res2['importados']} | Erros: {res2['erros']}")
+                for msg in res2["mensagens"]: st.warning(msg)
 
-# ===========================================================================
-# COTAÇÃO CEPEA
-# ===========================================================================
-elif menu == "Cotação Cepea":
-    _page_header("📈", "Cotação Cepea", "Preço do boi gordo -- ESALQ/Cepea")
+# ============================================================
+# DASHBOARD SANITARIO
+# ============================================================
+elif menu == "Dashboard Sanitario":
+    hdr("Dashboard Sanitario", "Saude do Rebanho", "Incidencias, curva epidemica e alertas")
+    lotes = listar_lotes()
+    opcoes = ["Todos os lotes"] + [f"{l[1]} (ID {l[0]})" for l in lotes]
+    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+    escolha = st.selectbox("Filtrar por lote", opcoes)
+    animais = listar_animais() if escolha == "Todos os lotes" else listar_animais_por_lote(dict_l[escolha])
 
-    col1, col2 = st.columns([2,1])
-    with col1:
-        if st.button("🔄 Buscar cotação atual"):
-            from cepea import buscar_cotacao_cepea
-            with st.spinner("Buscando no Cepea..."):
-                res = buscar_cotacao_cepea()
-            if res["sucesso"]:
-                salvar_cotacao(res["data"], res["preco"], res["fonte"])
-                st.success(f"✅ R$ {res['preco']:.2f}/@ -- {res['data']}")
-            else:
-                st.warning(f"Cepea indisponível: {res['msg']}")
+    todas_oc = []
+    for a in animais: todas_oc.extend(listar_ocorrencias(a[0]))
 
-    with col2:
-        with st.form("form_cotacao_manual"):
-            dt_cot = st.date_input("Data")
-            pr_cot = st.number_input("Preço (R$/@)", 0.0, 1000.0, 195.0)
-            if st.form_submit_button("Salvar manual"):
-                salvar_cotacao(str(dt_cot), pr_cot, "manual")
-                st.success("Salvo!"); st.rerun()
+    df_oc = pd.DataFrame(todas_oc, columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"]) if todas_oc else pd.DataFrame(columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"])
 
-    cotacoes = listar_cotacoes(0)  # todas
-    if cotacoes:
-        ult = cotacoes[-1]
-        st.metric("💰 Última cotação", f"R$ {ult[2]:.2f}/@",
-                  delta=f"{ult[1]} ({ult[3]})")
+    total_a  = len(animais)
+    c_oc     = df_oc["animal_id"].nunique() if len(df_oc)>0 else 0
+    inc      = (c_oc/total_a*100) if total_a>0 else 0
+    custo_oc = df_oc["custo"].fillna(0).sum() if len(df_oc)>0 else 0
 
-        hist = historico_grafico(cotacoes[-60:])  # últimas 60
-        if hist["datas"]:
-            df_cot = pd.DataFrame({"Data": hist["datas"], "Preço R$/@": hist["precos"]})
-            df_cot = df_cot.set_index("Data")
-            st.subheader("📊 Histórico de cotações")
-            st.line_chart(df_cot)
-            st.dataframe(df_cot.tail(10), use_container_width=True)
+    k1,k2,k3,k4 = st.columns(4)
+    k1.metric("Animais", total_a)
+    k2.metric("Com ocorrencia", c_oc)
+    k3.metric("Incidencia", f"{inc:.1f}%", delta="Alta" if inc>20 else None, delta_color="inverse" if inc>20 else "normal")
+    k4.metric("Custo sanitario", f"R$ {custo_oc:.2f}")
+
+    st.divider()
+
+    if len(df_oc) > 0:
+        t1,t2,t3,t4 = st.tabs(["Graficos","Por Lote","Curva Epidemica","Alertas"])
+        with t1:
+            c1,c2 = st.columns(2)
+            with c1:
+                st.subheader("Por tipo")
+                st.bar_chart(df_oc["tipo"].value_counts())
+            with c2:
+                st.subheader("Por gravidade")
+                st.bar_chart(df_oc["gravidade"].value_counts())
+        with t2:
+            dados_l = []
+            for lote in lotes:
+                anim_l = listar_animais_por_lote(lote[0])
+                tot_l  = len(anim_l)
+                ids_l  = [a[0] for a in anim_l]
+                oc_l   = df_oc[df_oc["animal_id"].isin(ids_l)] if len(df_oc)>0 else pd.DataFrame()
+                doentes_l = oc_l["animal_id"].nunique() if len(oc_l)>0 else 0
+                inc_l  = (doentes_l/tot_l*100) if tot_l>0 else 0
+                dados_l.append((lote[1], inc_l))
+            df_l = pd.DataFrame(dados_l, columns=["Lote","Incidencia (%)"]).set_index("Lote")
+            st.bar_chart(df_l)
+        with t3:
+            df_oc2 = df_oc.copy()
+            df_oc2["data"] = pd.to_datetime(df_oc2["data"])
+            curva = df_oc2.groupby(["data","tipo"]).size().unstack(fill_value=0)
+            st.line_chart(curva)
+        with t4:
+            for nome_l, inc_l in dados_l:
+                if inc_l > 20:  st.error(f"{nome_l}: alta incidencia ({inc_l:.1f}%)")
+                elif inc_l > 5: st.warning(f"{nome_l}: incidencia moderada ({inc_l:.1f}%)")
+                else:           st.success(f"{nome_l}: controle adequado ({inc_l:.1f}%)")
     else:
-        st.info("Nenhuma cotação registrada. Clique em 'Buscar cotação atual' ou insira manualmente.")
+        st.info("Nenhuma ocorrencia registrada ainda.")
 
-# ===========================================================================
-# SCORE DE SAÚDE
-# ===========================================================================
-elif menu == "Score de Saúde":
-    _page_header("💯", "Score de Saúde", "Ranking 0-100 por animal (GMD + ocorrências + reprodução)")
+# ============================================================
+# ANALISAR POR LOTE
+# ============================================================
+elif menu == "Analisar por Lote":
+    hdr("Analisar por Lote", "Analise do Lote", "Desempenho economico e zootecnico")
+    lote_id, lotes = sel_lote("analise_lote")
+    if lote_id:
+        lote   = obter_lote(lote_id)
+        animais = listar_animais_por_lote(lote_id)
+        rs = resumo_lote(lote_id)
+        k1,k2,k3,k4,k5 = st.columns(5)
+        k1.metric("Ativos",    rs["ativos"])
+        k2.metric("Mortes",    rs["mortos"])
+        k3.metric("GTAs",      rs["gtas_emitidas"])
+        k4.metric("Ocorrencias", rs["ocorrencias"])
+        k5.metric("Vac. pend.",  rs["vacinas_pendentes"])
+        st.divider()
 
-    lotes = listar_lotes()
-    if not lotes:
-        st.warning("Nenhum lote cadastrado.")
-        st.stop()
+        custo_diar = st.number_input("Custo diario por animal (R$)", 0.0, 100.0, 10.0)
+        preco_kg   = st.number_input("Preco do kg (R$)", 0.0, 50.0, 10.0)
 
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()))
-    lote_id  = dict_l[lote_sel]
-    animais  = listar_animais_por_lote(lote_id)
+        datas = [p[3] for a in animais for p in listar_pesagens(a[0])]
+        dias_lote = 0
+        if len(datas) > 1:
+            dts = pd.to_datetime(datas)
+            dias_lote = (max(dts)-min(dts)).days
 
-    if not animais:
-        st.warning("Nenhum animal neste lote.")
-        st.stop()
-
-    scores = []
-    for a in animais:
-        sc = calcular_score_saude(a[0])
-        car = verificar_carencia(a[0])
-        scores.append({
-            "Animal":       a[1],
-            "Score":        sc["score"],
-            "Classificação":sc["classificacao"],
-            "GMD":          sc["detalhes"]["gmd"],
-            "Ocorrências":  sc["detalhes"]["n_ocorrencias"],
-            "Pts GMD":      sc["detalhes"]["pts_gmd"],
-            "Pts Ocorr.":   sc["detalhes"]["pts_ocorrencias"],
-            "Pts Reprod.":  sc["detalhes"]["pts_reproducao"],
-            "Em Carência":  "⚠️ Sim" if car["em_carencia"] else "✅ Não",
-        })
-
-    df_sc = pd.DataFrame(scores).sort_values("Score", ascending=False)
-    st.dataframe(df_sc, use_container_width=True)
-
-    # Métricas resumo
-    col1,col2,col3,col4 = st.columns(4)
-    col1.metric("🏆 Score médio", f"{df_sc['Score'].mean():.1f}")
-    col2.metric("🥇 Melhor animal", df_sc.iloc[0]["Animal"])
-    col3.metric("⚠️ Críticos (< 40)", len(df_sc[df_sc["Score"]<40]))
-    col4.metric("💊 Em carência", len(df_sc[df_sc["Em Carência"]=="⚠️ Sim"]))
-
-    # Gráfico
-    st.bar_chart(df_sc.set_index("Animal")["Score"])
-
-    # Alertas individuais
-    st.subheader("🚨 Alertas")
-    for _, row in df_sc.iterrows():
-        if row["Score"] < 40:
-            st.error(f"🔴 {row['Animal']}: Score {row['Score']} -- CRÍTICO")
-        elif row["Score"] < 60:
-            st.warning(f"🟡 {row['Animal']}: Score {row['Score']} -- Regular")
-        if row["Em Carência"] == "⚠️ Sim":
-            st.warning(f"💊 {row['Animal']}: em período de carência -- verificar liberação para abate")
-
-# ===========================================================================
-# MARGEM REAL DO LOTE
-# ===========================================================================
-elif menu == "Margem Real do Lote":
-    _page_header("💰", "Margem Real do Lote", "Resultado financeiro: compra × venda × custos")
-
-    lotes = listar_lotes()
-    if not lotes:
-        st.warning("Nenhum lote cadastrado.")
-        st.stop()
-
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()))
-    lote_id  = dict_l[lote_sel]
-
-    tab1, tab2 = st.tabs(["📊 Resultado", "➕ Registrar Venda"])
-
-    with tab1:
-        mg = calcular_margem_lote(lote_id)
-        if mg:
-            if not mg["venda_registrada"]:
-                st.info("💡 Nenhuma venda registrada ainda. Registre na aba ao lado para ver a margem real.")
-
-            col1,col2,col3 = st.columns(3)
-            col1.metric("🛒 Custo de compra", f"R$ {mg['custo_compra']:,.2f}")
-            col2.metric("📈 Receita real", f"R$ {mg['receita_real']:,.2f}")
-            col3.metric("💊 Custo sanitário", f"R$ {mg['custo_sanitario']:,.2f}")
-
-            cor = "normal" if mg["margem"] >= 0 else "inverse"
-            st.metric("💰 Margem líquida",
-                      f"R$ {mg['margem']:,.2f}",
-                      delta=f"{mg['margem_pct']:.1f}%",
-                      delta_color=cor)
-
-            if mg["venda_registrada"]:
-                st.success(f"🏭 Frigorífico: {mg['frigorific']} -- Venda: {mg['data_venda']}")
-
-            # Histórico de vendas
-            vendas = listar_vendas_lote(lote_id)
-            if vendas:
-                st.subheader("📋 Histórico de vendas")
-                df_v = pd.DataFrame(vendas, columns=["ID","Lote","Data","R$/kg",
-                                                      "Peso Total kg","Frigorífico","Obs"])
-                st.dataframe(df_v, use_container_width=True)
-
-    with tab2:
-        with st.form("form_venda"):
-            dt_venda = st.date_input("Data da venda")
-            pr_kg    = st.number_input("Preço de venda (R$/kg)", 0.0, 100.0, 22.0)
-            peso_tot = st.number_input("Peso total vendido (kg)", 0.0)
-            frig     = st.text_input("Frigorífico")
-            obs_v    = st.text_area("Observação")
-            if st.form_submit_button("Registrar Venda"):
-                if peso_tot > 0:
-                    registrar_venda_lote(lote_id, str(dt_venda),
-                                         pr_kg, peso_tot, frig, obs_v)
-                    registrar_auditoria(u["id"], "venda_lote", "vendas_lote",
-                                        lote_id, f"R${pr_kg}/kg {peso_tot}kg {frig}")
-                    st.success("Venda registrada!")
-                    st.rerun()
-                else:
-                    st.error("Informe o peso total.")
-
-# ===========================================================================
-# RASTREABILIDADE GTA
-# ===========================================================================
-elif menu == "Rastreabilidade GTA":
-    _page_header("📋", "Rastreabilidade GTA", "Guia de Trânsito Animal e certificação SISBOV")
-
-    tab1, tab2, tab3 = st.tabs(["📄 GTAs", "➕ Emitir GTA", "🔖 SISBOV"])
-
-    with tab1:
-        gtas = listar_gta()
-        if gtas:
-            df_g = pd.DataFrame(gtas, columns=["ID","Lote ID","Lote","Nº GTA",
-                                                "Emissão","Origem","Destino",
-                                                "Qtd","Finalidade","Obs"])
-            st.dataframe(df_g, use_container_width=True)
-            st.metric("📄 Total de GTAs", len(gtas))
-        else:
-            st.info("Nenhuma GTA registrada.")
-
-    with tab2:
-        lotes = listar_lotes()
-        if not lotes:
-            st.warning("Cadastre um lote primeiro.")
-        else:
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            with st.form("form_gta"):
-                lote_g   = st.selectbox("Lote", list(dict_l.keys()))
-                num_gta  = st.text_input("Número da GTA")
-                dt_emis  = st.date_input("Data de emissão")
-                origem   = st.text_input("Município/Fazenda de origem")
-                destino  = st.text_input("Município/Frigorífico de destino")
-                qtd_g    = st.number_input("Quantidade de animais", 1, step=1)
-                finalid  = st.selectbox("Finalidade",
-                             ["Abate","Recria","Engorda","Reprodução","Exposição"])
-                obs_g    = st.text_area("Observação")
-                if st.form_submit_button("Registrar GTA"):
-                    if num_gta and origem and destino:
-                        registrar_gta(dict_l[lote_g], num_gta, str(dt_emis),
-                                      origem, destino, int(qtd_g), finalid, obs_g)
-                        registrar_auditoria(u["id"],"gta","gta",
-                                            dict_l[lote_g], num_gta)
-                        st.success("GTA registrada!"); st.rerun()
-                    else:
-                        st.error("Preencha número, origem e destino.")
-
-    with tab3:
-        lotes = listar_lotes()
-        if lotes:
-            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-            lote_s  = st.selectbox("Lote", list(dict_l.keys()), key="sisbov_lote")
-            animais = listar_animais_por_lote(dict_l[lote_s])
-            if animais:
-                dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
-                anim_s = st.selectbox("Animal", list(dict_a.keys()))
-                aid_s  = dict_a[anim_s]
-                sb = obter_sisbov(aid_s)
-                if sb:
-                    st.success(f"✅ SISBOV cadastrado: **{sb[2]}** -- {sb[3]}")
-                else:
-                    st.info("Animal sem SISBOV cadastrado.")
-                with st.form("form_sisbov"):
-                    num_sb = st.text_input("Número SISBOV (15 dígitos)")
-                    dt_sb  = st.date_input("Data de certificação")
-                    if st.form_submit_button("Cadastrar SISBOV"):
-                        if len(num_sb) == 15:
-                            registrar_sisbov(aid_s, num_sb, str(dt_sb))
-                            st.success("SISBOV cadastrado!"); st.rerun()
-                        else:
-                            st.error("SISBOV deve ter exatamente 15 dígitos.")
-
-# ===========================================================================
-# COMPARATIVO DE LOTES
-# ===========================================================================
-elif menu == "Comparativo de Lotes":
-    _page_header("🔀", "Comparativo de Lotes", "Side-by-side de GMD, custos e resultados")
-
-    lotes = listar_lotes()
-    if len(lotes) < 2:
-        st.warning("Cadastre pelo menos 2 lotes para comparar.")
-        st.stop()
-
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    selecionados = st.multiselect("Selecione 2 a 4 lotes para comparar",
-                                   list(dict_l.keys()),
-                                   default=list(dict_l.keys())[:min(2,len(dict_l))])
-    if len(selecionados) < 2:
-        st.info("Selecione pelo menos 2 lotes.")
-        st.stop()
-
-    preco_kg   = st.number_input("Preço do kg (R$)", 0.0, 100.0, 20.0)
-    custo_diar = st.number_input("Custo diário/animal (R$)", 0.0, 100.0, 10.0)
-
-    dados = []
-    for nome_l in selecionados:
-        lid  = dict_l[nome_l]
-        anim = listar_animais_por_lote(lid)
-        tm   = taxa_mortalidade_lote(lid)
-        tp   = taxa_prenhez_lote(lid)
-
-        gmds, ganho_t, dias_t, custo_san = [], 0, 0, 0
-        for a in anim:
+        custo_op = custo_diar * len(animais) * dias_lote
+        ganho_t  = 0
+        custo_san = 0
+        gmds = []
+        for a in animais:
             ps = listar_pesagens(a[0])
-            if len(ps) >= 2:
+            if len(ps) > 1:
                 df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
                 df["data"] = pd.to_datetime(df["data"])
                 df = df.sort_values("data")
-                dias = (df["data"].iloc[-1]-df["data"].iloc[0]).days
-                if dias > 0:
-                    g = (df["peso"].iloc[-1]-df["peso"].iloc[0])/dias
-                    if 0 < g <= 2: gmds.append(g)
-                    ganho_t += df["peso"].iloc[-1]-df["peso"].iloc[0]
-                    dias_t  += dias
+                g  = df["peso"].iloc[-1] - df["peso"].iloc[0]
+                d  = (df["data"].iloc[-1]-df["data"].iloc[0]).days
+                if g > 0: ganho_t += g
+                if d > 0:
+                    gmd = g/d
+                    if 0 <= gmd <= 2: gmds.append(gmd)
             for oc in listar_ocorrencias(a[0]):
                 if oc[6]: custo_san += oc[6]
 
-        gmd_m = round(sum(gmds)/len(gmds),3) if gmds else 0
         receita = ganho_t * preco_kg
-        custo_op = custo_diar * len(anim) * (dias_t/max(len(anim),1))
-        lucro = receita - custo_op - custo_san
+        lucro   = receita - custo_op - custo_san
+        gmd_m   = sum(gmds)/len(gmds) if gmds else 0
 
-        dados.append({
-            "Lote":           nome_l.split(" (ID")[0],
-            "Animais":        len(anim),
-            "GMD médio":      gmd_m,
-            "Incidência %":   round(len([a for a in anim if listar_ocorrencias(a[0])])/max(len(anim),1)*100,1),
-            "Mortalidade %":  tm["taxa"],
-            "Prenhez %":      round(tp["taxa"],1),
-            "Receita R$":     round(receita,2),
-            "Custo San. R$":  round(custo_san,2),
-            "Lucro R$":       round(lucro,2),
-        })
+        st.subheader("Resultado Economico")
+        re1,re2,re3,re4 = st.columns(4)
+        re1.metric("Receita estimada", f"R$ {receita:,.2f}")
+        re2.metric("Custo operacional", f"R$ {custo_op:,.2f}")
+        re3.metric("Custo sanitario",  f"R$ {custo_san:,.2f}")
+        re4.metric("Lucro / Prejuizo", f"R$ {lucro:,.2f}", delta="Lucro" if lucro>=0 else "Prejuizo", delta_color="normal" if lucro>=0 else "inverse")
 
-    df_comp = pd.DataFrame(dados).set_index("Lote")
-    st.dataframe(df_comp, use_container_width=True)
+        st.metric("GMD medio do lote", f"{gmd_m:.3f} kg/dia")
+        if gmd_m < 0.5: st.warning("Baixo desempenho")
+        elif gmd_m > 0: st.success("Bom desempenho")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("📈 GMD médio por lote")
-        st.bar_chart(df_comp["GMD médio"])
-    with col2:
-        st.subheader("💰 Lucro estimado por lote")
-        st.bar_chart(df_comp["Lucro R$"])
+        lucro_anim = lucro/len(animais) if animais else 0
+        st.metric("Lucro por animal", f"R$ {lucro_anim:,.2f}")
 
-    melhor = df_comp["GMD médio"].idxmax()
-    pior   = df_comp["GMD médio"].idxmin()
-    st.success(f"🥇 Melhor GMD: **{melhor}** ({df_comp.loc[melhor,'GMD médio']:.3f} kg/dia)")
-    st.warning(f"⚠️ Pior GMD: **{pior}** ({df_comp.loc[pior,'GMD médio']:.3f} kg/dia)")
+        # Ranking GMD
+        ranking = []
+        for a in animais:
+            ps = listar_pesagens(a[0])
+            if len(ps) > 1:
+                df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
+                df["data"] = pd.to_datetime(df["data"])
+                df = df.sort_values("data")
+                d  = (df["data"].iloc[-1]-df["data"].iloc[0]).days
+                if d > 0:
+                    gmd = (df["peso"].iloc[-1]-df["peso"].iloc[0])/d
+                    if 0 <= gmd <= 2: ranking.append((a[1], gmd))
+        if ranking:
+            ranking.sort(key=lambda x: x[1], reverse=True)
+            st.subheader("Ranking GMD")
+            for i,(nm,gmd) in enumerate(ranking,1):
+                st.write(f"{i}. {nm} -> {gmd:.3f} kg/dia")
 
-# ===========================================================================
-# GMD AO LONGO DO TEMPO
-# ===========================================================================
-elif menu == "GMD ao Longo do Tempo":
-    _page_header("📉", "GMD ao Longo do Tempo", "Evolução temporal do ganho de peso do lote")
-
+# ============================================================
+# ANALISAR ANIMAL
+# ============================================================
+elif menu == "Analisar Animal":
+    hdr("Analisar Animal", "Analise Individual", "Historico de peso, ocorrencias e alertas")
     lotes = listar_lotes()
     if not lotes:
-        st.warning("Nenhum lote cadastrado.")
-        st.stop()
-
-    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
-    lote_sel = st.selectbox("Selecione o lote", list(dict_l.keys()))
-    lote_id  = dict_l[lote_sel]
-
-    janela = st.slider("Janela de cálculo (dias)", 7, 60, 14)
-
-    pontos = calcular_gmd_temporal(lote_id, janela_dias=janela)
-    if pontos:
-        df_gmd = pd.DataFrame(pontos, columns=["Data","GMD médio (kg/dia)"])
-        df_gmd = df_gmd.set_index("Data")
-        st.line_chart(df_gmd)
-        st.dataframe(df_gmd, use_container_width=True)
-
-        ultimo_gmd = pontos[-1][1]
-        primeiro_gmd = pontos[0][1]
-        delta = ultimo_gmd - primeiro_gmd
-        st.metric("📈 GMD atual", f"{ultimo_gmd:.3f} kg/dia",
-                  delta=f"{delta:+.3f} vs início")
-
-        if delta < -0.1:
-            st.error("🔴 GMD em queda -- revisar nutrição e saúde do lote")
-        elif delta > 0.1:
-            st.success("✅ GMD em melhora -- manejo eficaz")
-        else:
-            st.info("📊 GMD estável")
+        st.warning("Nenhum lote cadastrado")
     else:
-        st.info("Dados insuficientes. Registre pesagens em datas diferentes para visualizar a evolução.")
-
-# ===========================================================================
-# BACKUP DO SISTEMA
-# ===========================================================================
-elif menu == "Backup do Sistema":
-    _page_header("💾", "Backup do Sistema", "Download e envio automático dos seus dados")
-
-    import database as _db_mod
-    db_path = _db_mod.DB_PATH
-
-    st.info(f"Banco de dados: `{db_path}`")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("📦 Download ZIP (CSVs)")
-        st.write("Exporta todas as tabelas em formato CSV dentro de um arquivo ZIP.")
-        # Gera o backup direto -- sem step intermediário de button
-        if not _BACKUP_OK:
-            st.error("backup.py não encontrado no repositório.")
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        aa1,aa2 = st.columns(2)
+        with aa1: lote_s = st.selectbox("Lote", list(dict_l.keys()), key="aa_lote")
+        lote_id = dict_l[lote_s]
+        animais = listar_animais_por_lote(lote_id)
+        if not animais:
+            st.warning("Nenhum animal neste lote.")
         else:
-            with st.spinner("Preparando backup ZIP..."):
+            dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+            with aa2: anim_s = st.selectbox("Animal", list(dict_a.keys()), key="aa_anim")
+            animal_id = dict_a[anim_s]
+            pesagens   = listar_pesagens(animal_id)
+            ocorrencias = listar_ocorrencias(animal_id)
+            sc = calcular_score_saude(animal_id)
+            gmd = None
+
+            km1,km2,km3,km4 = st.columns(4)
+            km1.metric("Pesagens",    len(pesagens))
+            km2.metric("Ocorrencias", len(ocorrencias))
+            km3.metric("Score saude", f"{sc['score']}/100")
+            km4.metric("Classificacao", sc["classificacao"])
+
+            t1,t2,t3 = st.tabs(["Pesagens & GMD","Ocorrencias","Alertas"])
+
+            with t1:
+                if pesagens:
+                    df = pd.DataFrame(pesagens, columns=["ID","Animal","Peso","Data"])
+                    df["Data"] = pd.to_datetime(df["Data"])
+                    df = df.sort_values("Data")
+                    st.line_chart(df.set_index("Data")["Peso"])
+                    st.dataframe(df[["Data","Peso"]].rename(columns={"Peso":"Peso (kg)"}), use_container_width=True)
+                    if len(df) > 1:
+                        dias = (df["Data"].iloc[-1]-df["Data"].iloc[0]).days
+                        if dias > 0:
+                            gmd = (df["Peso"].iloc[-1]-df["Peso"].iloc[0])/dias
+                            d1,d2,d3 = st.columns(3)
+                            d1.metric("Ganho total", f"{df['Peso'].iloc[-1]-df['Peso'].iloc[0]:.2f} kg")
+                            d2.metric("Periodo",     f"{dias} dias")
+                            d3.metric("GMD",         f"{gmd:.3f} kg/dia")
+                            if gmd < 0:    st.error("Perda de peso - possivel doenca")
+                            elif gmd > 2:  st.error("GMD irreal - revisar dados")
+                            elif gmd < 0.5: st.warning("GMD baixo")
+                            else:          st.success("Bom desempenho")
+                else:
+                    st.info("Sem pesagens registradas.")
+
+            with t2:
+                if ocorrencias:
+                    df_oc = pd.DataFrame(ocorrencias, columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"])
+                    df_oc["data"] = pd.to_datetime(df_oc["data"])
+                    st.dataframe(df_oc[["data","tipo","gravidade","descricao","custo","status"]], use_container_width=True)
+                    custo_tot = df_oc["custo"].fillna(0).sum()
+                    st.metric("Custo total tratamentos", f"R$ {custo_tot:.2f}")
+                else:
+                    st.success("Nenhuma ocorrencia registrada.")
+
+            with t3:
+                det = sc["detalhes"]
+                s1,s2,s3 = st.columns(3)
+                s1.metric("GMD (pts)",        f"{det['pts_gmd']}/50")
+                s2.metric("Ocorrencias (pts)",f"{det['pts_ocorrencias']}/35")
+                s3.metric("Reproducao (pts)", f"{det['pts_reproducao']}/15")
+                if gmd is not None:
+                    if gmd < 0.5 and ocorrencias: st.error("Alto risco: baixo GMD + ocorrencias")
+                    elif gmd < 0.5:               st.warning("Baixo GMD")
+                    elif ocorrencias:             st.warning("Historico clinico - monitorar")
+                    else:                         st.success("Animal saudavel e produtivo")
+                car = verificar_carencia(animal_id)
+                if car["em_carencia"]:
+                    st.error(f"Em carencia ate {car['liberado_em']} - nao abater!")
+                else:
+                    st.success("Sem restricao de carencia")
+
+# ============================================================
+# SCORE DE SAUDE
+# ============================================================
+elif menu == "Score de Saude":
+    hdr("Score de Saude", "Ranking de Saude", "Nota 0-100 por animal (GMD + ocorrencias + reproducao)")
+    lote_id, _ = sel_lote("score_lote")
+    if lote_id:
+        animais = listar_animais_por_lote(lote_id)
+        if not animais:
+            st.warning("Nenhum animal.")
+        else:
+            scores = []
+            for a in animais:
+                sc  = calcular_score_saude(a[0])
+                car = verificar_carencia(a[0])
+                scores.append({"Animal": a[1], "Score": sc["score"], "Classificacao": sc["classificacao"],
+                               "GMD": sc["detalhes"]["gmd"], "Ocorrencias": sc["detalhes"]["n_ocorrencias"],
+                               "Em Carencia": "Sim" if car["em_carencia"] else "Nao"})
+            df_sc = pd.DataFrame(scores).sort_values("Score", ascending=False)
+            st.dataframe(df_sc, use_container_width=True)
+            c1,c2,c3 = st.columns(3)
+            c1.metric("Score medio",   f"{df_sc['Score'].mean():.1f}")
+            c2.metric("Melhor animal", df_sc.iloc[0]["Animal"])
+            c3.metric("Criticos (<40)", len(df_sc[df_sc["Score"]<40]))
+            st.bar_chart(df_sc.set_index("Animal")["Score"])
+            st.subheader("Alertas")
+            for _, row in df_sc.iterrows():
+                if row["Score"] < 40:   st.error(f"{row['Animal']}: Score {row['Score']} - CRITICO")
+                elif row["Score"] < 60: st.warning(f"{row['Animal']}: Score {row['Score']} - Regular")
+                if row["Em Carencia"] == "Sim": st.warning(f"{row['Animal']}: em carencia de medicamento")
+
+# ============================================================
+# GMD TEMPORAL
+# ============================================================
+elif menu == "GMD Temporal":
+    hdr("GMD Temporal", "Evolucao do GMD", "Evolucao do ganho de peso ao longo do tempo")
+    lote_id, _ = sel_lote("gmd_lote")
+    if lote_id:
+        janela = st.slider("Janela de calculo (dias)", 7, 60, 14)
+        pontos = calcular_gmd_temporal(lote_id, janela)
+        if pontos:
+            df_g = pd.DataFrame(pontos, columns=["Data","GMD medio (kg/dia)"]).set_index("Data")
+            st.line_chart(df_g)
+            st.dataframe(df_g, use_container_width=True)
+            ult = pontos[-1][1]; pri = pontos[0][1]
+            st.metric("GMD atual", f"{ult:.3f} kg/dia", delta=f"{ult-pri:+.3f} vs inicio")
+            if ult-pri < -0.1:   st.error("GMD em queda - revisar nutricao")
+            elif ult-pri > 0.1:  st.success("GMD em melhora")
+            else:                st.info("GMD estavel")
+        else:
+            st.info("Dados insuficientes. Registre pesagens em datas diferentes.")
+
+# ============================================================
+# COMPARATIVO LOTES
+# ============================================================
+elif menu == "Comparativo Lotes":
+    hdr("Comparativo Lotes", "Comparativo entre Lotes", "Side-by-side de GMD, custos e resultados")
+    lotes = listar_lotes()
+    if len(lotes) < 2:
+        st.warning("Cadastre pelo menos 2 lotes.")
+    else:
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        sels = st.multiselect("Selecione 2 a 4 lotes", list(dict_l.keys()), default=list(dict_l.keys())[:min(2,len(dict_l))])
+        if len(sels) < 2:
+            st.info("Selecione pelo menos 2 lotes.")
+        else:
+            pk  = st.number_input("Preco kg (R$)", 0.0, 100.0, 20.0)
+            cd  = st.number_input("Custo diario/animal (R$)", 0.0, 100.0, 10.0)
+            dados = []
+            for nm in sels:
+                lid   = dict_l[nm]
+                anim  = listar_animais_por_lote(lid)
+                tm    = taxa_mortalidade_lote(lid)
+                tp    = taxa_prenhez_lote(lid)
+                gmds, ganho, dias_t, custo_s = [], 0, 0, 0
+                for a in anim:
+                    ps = listar_pesagens(a[0])
+                    if len(ps) >= 2:
+                        df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
+                        df["data"] = pd.to_datetime(df["data"])
+                        df = df.sort_values("data")
+                        d  = (df["data"].iloc[-1]-df["data"].iloc[0]).days
+                        g  = df["peso"].iloc[-1]-df["peso"].iloc[0]
+                        if d > 0:
+                            gv = g/d
+                            if 0 < gv <= 2: gmds.append(gv)
+                        ganho += g; dias_t += d
+                    for oc in listar_ocorrencias(a[0]):
+                        if oc[6]: custo_s += oc[6]
+                gmd_m  = sum(gmds)/len(gmds) if gmds else 0
+                receita = ganho * pk
+                custo_op = cd * len(anim) * (dias_t/max(len(anim),1))
+                lucro   = receita - custo_op - custo_s
+                dados.append({"Lote": nm.split(" (ID")[0], "Animais": len(anim),
+                              "GMD medio": gmd_m, "Incid. %": round(len([a for a in anim if listar_ocorrencias(a[0])])/max(len(anim),1)*100,1),
+                              "Mortalidade %": tm["taxa"], "Prenhez %": round(tp["taxa"],1),
+                              "Lucro R$": round(lucro,2)})
+            df_c = pd.DataFrame(dados).set_index("Lote")
+            st.dataframe(df_c, use_container_width=True)
+            c1,c2 = st.columns(2)
+            with c1: st.subheader("GMD medio"); st.bar_chart(df_c["GMD medio"])
+            with c2: st.subheader("Lucro R$");  st.bar_chart(df_c["Lucro R$"])
+
+# ============================================================
+# PAINEL DE DECISAO
+# ============================================================
+elif menu == "Painel de Decisao":
+    hdr("Painel de Decisao", "Decisao Financeira", "Resultado financeiro por lote")
+    pk = st.number_input("Preco kg (R$)", 0.0, 50.0, 10.0)
+    cd = st.number_input("Custo diario/animal (R$)", 0.0, 100.0, 10.0)
+    lotes = listar_lotes()
+    if not lotes: st.warning("Nenhum lote."); st.stop()
+    dados = []
+    for l in lotes:
+        anim = listar_animais_por_lote(l[0])
+        ganho = custo_s = dias_t = 0
+        for a in anim:
+            ps = listar_pesagens(a[0])
+            if len(ps) > 1:
+                df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
+                df["data"] = pd.to_datetime(df["data"])
+                df = df.sort_values("data")
+                g = df["peso"].iloc[-1]-df["peso"].iloc[0]
+                d = (df["data"].iloc[-1]-df["data"].iloc[0]).days
+                if g > 0 and d > 0: ganho += g; dias_t += d
+            for oc in listar_ocorrencias(a[0]):
+                if oc[6]: custo_s += oc[6]
+        custo_op = cd * len(anim) * dias_t
+        receita  = ganho * pk
+        lucro    = receita - custo_op - custo_s
+        dados.append((l[1], lucro, receita, custo_op, custo_s))
+    df_d = pd.DataFrame(dados, columns=["Lote","Lucro","Receita","Custo Op","Custo San"]).sort_values("Lucro", ascending=False)
+    st.metric("Lucro total", f"R$ {df_d['Lucro'].sum():,.2f}")
+    st.dataframe(df_d, use_container_width=True)
+    st.bar_chart(df_d.set_index("Lote")["Lucro"])
+    st.subheader("Alertas")
+    for _, row in df_d.iterrows():
+        if row["Lucro"] < 0:                            st.error(f"{row['Lote']}: prejuizo")
+        elif row["Custo San"] > row["Receita"] * 0.2:  st.warning(f"{row['Lote']}: custo sanitario elevado")
+        else:                                           st.success(f"{row['Lote']}: operacao saudavel")
+
+# ============================================================
+# DASHBOARD EXECUTIVO
+# ============================================================
+elif menu == "Dashboard Executivo":
+    hdr("Dashboard Executivo", "KPIs Executivos", "KPIs consolidados do lote")
+    pk = st.number_input("Preco kg (R$)", 0.0, 50.0, 10.0)
+    cd = st.number_input("Custo diario/animal (R$)", 0.0, 100.0, 10.0)
+    lote_id, _ = sel_lote("exec_lote")
+    if lote_id:
+        animais = listar_animais_por_lote(lote_id)
+        if not animais: st.warning("Nenhum animal."); st.stop()
+        ganho = custo_s = dias_t = 0
+        animais_oc = set()
+        gmds = []
+        for a in animais:
+            ps = listar_pesagens(a[0])
+            if len(ps) > 1:
+                df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
+                df["data"] = pd.to_datetime(df["data"])
+                df = df.sort_values("data")
+                g = df["peso"].iloc[-1]-df["peso"].iloc[0]
+                d = (df["data"].iloc[-1]-df["data"].iloc[0]).days
+                if g > 0 and d > 0:
+                    ganho += g; dias_t += d
+                    gmd = g/d
+                    if 0 <= gmd <= 2: gmds.append(gmd)
+            ocs = listar_ocorrencias(a[0])
+            if ocs: animais_oc.add(a[0])
+            for oc in ocs:
+                if oc[6]: custo_s += oc[6]
+        n = len(animais)
+        custo_op = cd * n * dias_t
+        receita  = ganho * pk
+        lucro    = receita - custo_op - custo_s
+        inc      = (len(animais_oc)/n*100) if n>0 else 0
+        gmd_m    = sum(gmds)/len(gmds) if gmds else 0
+        c1,c2,c3 = st.columns(3)
+        c1.metric("Lucro",       f"R$ {lucro:,.2f}")
+        c2.metric("Incidencia",  f"{inc:.2f}%")
+        c3.metric("GMD",         f"{gmd_m:.3f} kg/dia")
+        st.subheader("Status do Lote")
+        if lucro < 0:              st.error("Prejuizo - acao imediata")
+        elif inc > 20:             st.error("Alta incidencia sanitaria")
+        elif gmd_m < 0.5:         st.warning("Baixo desempenho produtivo")
+        elif custo_s > receita*.2: st.warning("Custo sanitario elevado")
+        else:                      st.success("Lote saudavel e lucrativo")
+        st.metric("Animais",        n)
+        st.metric("Ganho total",    f"{ganho:.2f} kg")
+        st.metric("Custo sanitario",f"R$ {custo_s:.2f}")
+
+# ============================================================
+# PESQUISAR OCORRENCIAS
+# ============================================================
+elif menu == "Pesquisar Ocorrencias":
+    hdr("Pesquisar Ocorrencias", "Busca de Ocorrencias", "Filtros por lote, tipo e gravidade")
+    lotes = listar_lotes()
+    dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+    f1,f2,f3 = st.columns(3)
+    with f1: escolha_l = st.selectbox("Lote", ["Todos"]+list(dict_l.keys()))
+    with f2: tipo_f    = st.selectbox("Tipo", ["Todos","Doenca","Lesao","Medicamento","Outros"])
+    with f3: grav_f    = st.selectbox("Gravidade", ["Todas","Baixa","Media","Alta"])
+    animais = listar_animais() if escolha_l=="Todos" else listar_animais_por_lote(dict_l[escolha_l])
+    todas_oc = []
+    for a in animais: todas_oc.extend(listar_ocorrencias(a[0]))
+    df_oc = pd.DataFrame(todas_oc, columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"]) if todas_oc else pd.DataFrame(columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"])
+    if len(df_oc)>0:
+        if tipo_f!="Todos":  df_oc = df_oc[df_oc["tipo"]==tipo_f]
+        if grav_f!="Todas":  df_oc = df_oc[df_oc["gravidade"]==grav_f]
+        df_oc["data"] = pd.to_datetime(df_oc["data"])
+        df_oc = df_oc.sort_values("data", ascending=False)
+    st.divider()
+    if len(df_oc)>0:
+        p1,p2,p3,p4 = st.columns(4)
+        p1.metric("Ocorrencias",   len(df_oc))
+        p2.metric("Animais afetados", df_oc["animal_id"].nunique())
+        p3.metric("Custo total",   f"R$ {df_oc['custo'].fillna(0).sum():.2f}")
+        p4.metric("Gravidade Alta", len(df_oc[df_oc["gravidade"]=="Alta"]))
+        t1,t2 = st.tabs(["Registros","Graficos"])
+        with t1: st.dataframe(df_oc[["data","tipo","gravidade","descricao","custo","status"]], use_container_width=True)
+        with t2:
+            c1,c2 = st.columns(2)
+            with c1: st.bar_chart(df_oc["tipo"].value_counts())
+            with c2: st.bar_chart(df_oc["gravidade"].value_counts())
+    else:
+        st.info("Nenhuma ocorrencia com esses filtros.")
+
+# ============================================================
+# CALENDARIO SANITARIO
+# ============================================================
+elif menu == "Calendario Sanitario":
+    hdr("Calendario Sanitario", "Vacinas e Medicacoes", "Agenda de vacinas e alertas")
+    t1,t2,t3 = st.tabs(["Agenda","Agendar","Confirmar"])
+    with t1:
+        lotes = listar_lotes()
+        if lotes:
+            d = {"Todos": None, **{f"{l[1]} (ID {l[0]})": l[0] for l in lotes}}
+            f  = st.selectbox("Lote", list(d.keys()), key="cal_f")
+            vs = listar_vacinas_agenda(d[f])
+            if vs:
+                df_v = pd.DataFrame(vs, columns=["ID","Lote","Vacina","Previsto","Realizado","Status","Obs"])
+                st.dataframe(df_v, use_container_width=True)
+                hoje = date.today()
+                for _, row in df_v.iterrows():
+                    try:
+                        dt_p = datetime.strptime(str(row["Previsto"]), "%Y-%m-%d").date()
+                        atrasado = dt_p < hoje and row["Status"]=="pendente"
+                    except: atrasado = False
+                    if row["Status"]=="realizado":  st.success(f"{row['Vacina']} - realizada")
+                    elif atrasado:                  st.error(f"ATRASADA: {row['Vacina']} - previsto {row['Previsto']}")
+                    else:                           st.warning(f"Pendente: {row['Vacina']} - {row['Previsto']}")
+            else: st.info("Nenhuma vacina agendada.")
+    with t2:
+        lotes = listar_lotes()
+        if not lotes: st.warning("Cadastre um lote.")
+        else:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            with st.form("form_vac"):
+                vs1,vs2 = st.columns(2)
+                with vs1:
+                    lote_v = st.selectbox("Lote", list(dict_l.keys()))
+                    nome_v = st.text_input("Nome da vacina *")
+                with vs2:
+                    data_v = st.date_input("Data prevista", value=date.today()+timedelta(days=7))
+                    obs_v  = st.text_area("Observacao")
+                if st.form_submit_button("Agendar", type="primary"):
+                    if nome_v:
+                        adicionar_vacina_agenda(dict_l[lote_v], nome_v, str(data_v), obs_v)
+                        st.success("Agendado!"); st.rerun()
+                    else: st.error("Informe o nome.")
+    with t3:
+        pend_v = listar_vacinas_pendentes()
+        if not pend_v: st.success("Nenhuma vacina pendente.")
+        else:
+            df_p = pd.DataFrame(pend_v, columns=["ID","Lote ID","Lote","Vacina","Previsto","Status","Obs"])
+            op   = {f"{r['Vacina']} - {r['Lote']} (prev. {r['Previsto']})": r["ID"] for _,r in df_p.iterrows()}
+            with st.form("form_real_v"):
+                sel_v = st.selectbox("Vacina", list(op.keys()))
+                dt_r  = st.date_input("Data realizacao")
+                if st.form_submit_button("Confirmar", type="primary"):
+                    registrar_vacina_realizada(op[sel_v], str(dt_r))
+                    st.success("Registrado!"); st.rerun()
+
+# ============================================================
+# ESTOQUE MEDICAMENTOS
+# ============================================================
+elif menu == "Estoque Medicamentos":
+    hdr("Estoque Medicamentos", "Controle de Medicamentos", "Estoque, validade e uso")
+    t1,t2,t3 = st.tabs(["Estoque","Cadastrar","Registrar Uso"])
+    with t1:
+        meds  = listar_medicamentos()
+        crits = listar_medicamentos_criticos()
+        if crits:
+            for m in crits:
+                mot = "estoque baixo" if m[3]<=m[4] else f"vence {m[5]}"
+                st.error(f"{m[1]} - {m[3]:.1f} {m[2]} ({mot})")
+        if meds:
+            df_m = pd.DataFrame(meds, columns=["ID","Nome","Unidade","Estoque","Minimo","Validade","Custo Unit."])
+            st.dataframe(df_m, use_container_width=True)
+            m1,m2 = st.columns(2)
+            m1.metric("Valor total estoque", f"R$ {sum(m[3]*m[6] for m in meds):,.2f}")
+            m2.metric("Itens cadastrados",   len(meds))
+        else: st.info("Nenhum medicamento.")
+    with t2:
+        with st.form("form_med"):
+            mn1,mn2 = st.columns(2)
+            with mn1:
+                nome_md = st.text_input("Nome *")
+                unid_md = st.selectbox("Unidade", ["dose","mL","g","comprimido","frasco","kg"])
+                estq_md = st.number_input("Estoque inicial", 0.0, step=1.0)
+            with mn2:
+                emin_md = st.number_input("Estoque minimo (alerta)", 0.0, step=1.0)
+                val_md  = st.date_input("Validade")
+                cust_md = st.number_input("Custo unitario (R$)", 0.0)
+            if st.form_submit_button("Cadastrar", type="primary"):
+                if nome_md:
+                    adicionar_medicamento(nome_md, unid_md, estq_md, emin_md, str(val_md), cust_md)
+                    st.success("Medicamento cadastrado!"); st.rerun()
+                else: st.error("Informe o nome.")
+    with t3:
+        meds  = listar_medicamentos()
+        lotes = listar_lotes()
+        if not meds or not lotes: st.warning("Cadastre medicamentos e lotes.")
+        else:
+            dict_md = {f"{m[1]} ({m[3]:.1f} {m[2]})": m[0] for m in meds}
+            dict_l  = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            with st.form("form_uso_md"):
+                u1,u2 = st.columns(2)
+                with u1:
+                    med_s  = st.selectbox("Medicamento", list(dict_md.keys()))
+                    lote_s = st.selectbox("Lote", list(dict_l.keys()))
+                with u2:
+                    animais_u = listar_animais_por_lote(dict_l[lote_s])
+                    dict_au   = {f"{a[1]} (ID {a[0]})": a[0] for a in animais_u}
+                    anim_s    = st.selectbox("Animal", list(dict_au.keys()) if dict_au else ["--"])
+                    qtd_u     = st.number_input("Quantidade", 0.01, step=0.5)
+                    data_u    = st.date_input("Data")
+                if st.form_submit_button("Registrar", type="primary") and dict_au:
+                    registrar_uso_medicamento(dict_md[med_s], dict_au[anim_s], str(data_u), qtd_u)
+                    st.success("Uso registrado e estoque atualizado!"); st.rerun()
+
+# ============================================================
+# CONTROLE REPRODUTIVO
+# ============================================================
+elif menu == "Controle Reprodutivo":
+    hdr("Controle Reprodutivo", "Reproducao", "IATF, diagnostico, prenhez e partos")
+    t1,t2,t3,t4 = st.tabs(["Indicadores","Registrar","Diagnostico","Partos"])
+    with t1:
+        lote_id, _ = sel_lote("rep_ind")
+        if lote_id:
+            tp = taxa_prenhez_lote(lote_id)
+            c1,c2,c3 = st.columns(3)
+            c1.metric("Com registro", tp["total"])
+            c2.metric("Positivas",    tp["positivas"])
+            c3.metric("Taxa prenhez", f"{tp['taxa']:.1f}%")
+    with t2:
+        lotes = listar_lotes()
+        if lotes:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            with st.form("form_cob"):
+                r1,r2 = st.columns(2)
+                with r1:
+                    lote_r = st.selectbox("Lote", list(dict_l.keys()))
+                    anim_r = listar_animais_por_lote(dict_l[lote_r])
+                    dict_ar = {f"{a[1]} (ID {a[0]})": a[0] for a in anim_r}
+                    anim_rs = st.selectbox("Animal", list(dict_ar.keys()) if dict_ar else ["--"])
+                with r2:
+                    tipo_r = st.selectbox("Tipo", ["IATF","Monta Natural","TE"])
+                    data_r = st.date_input("Data cio / IATF")
+                    obs_r  = st.text_area("Observacao")
+                if st.form_submit_button("Registrar", type="primary") and dict_ar:
+                    adicionar_reproducao(dict_ar[anim_rs], tipo_r, data_cio=str(data_r), observacao=obs_r)
+                    st.success("Cobertura registrada!"); st.rerun()
+    with t3:
+        lotes = listar_lotes()
+        if lotes:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            d1,d2 = st.columns(2)
+            with d1: lote_ds = st.selectbox("Lote", list(dict_l.keys()), key="diag_lote")
+            anim_d = listar_animais_por_lote(dict_l[lote_ds])
+            dict_ad = {f"{a[1]} (ID {a[0]})": a[0] for a in anim_d}
+            if dict_ad:
+                with d2: anim_ds = st.selectbox("Animal", list(dict_ad.keys()), key="diag_anim")
+                repros = listar_reproducao(dict_ad[anim_ds])
+                if repros:
+                    r = repros[0]
+                    st.info(f"Ultimo registro: {r[3]} | Resultado: {r[5]}")
+                    with st.form("form_diag"):
+                        resultado = st.selectbox("Resultado", ["pendente","positivo","negativo"])
+                        data_diag = st.date_input("Data diagnostico")
+                        parto_p   = st.date_input("Parto previsto", value=date.today()+timedelta(days=283))
+                        if st.form_submit_button("Salvar", type="primary"):
+                            atualizar_reproducao(r[0], resultado,
+                                data_diagnostico=str(data_diag),
+                                data_parto_previsto=str(parto_p) if resultado=="positivo" else None)
+                            st.success("Atualizado!"); st.rerun()
+                else: st.info("Sem registros reprodutivos.")
+    with t4:
+        partos = listar_partos_previstos()
+        if partos:
+            df_p = pd.DataFrame(partos, columns=["ID","Animal","Lote","Parto Previsto","Tipo"])
+            st.dataframe(df_p, use_container_width=True)
+        else: st.success("Nenhum parto previsto nos proximos 30 dias.")
+
+# ============================================================
+# MAPA PIQUETES
+# ============================================================
+elif menu == "Mapa Piquetes":
+    hdr("Mapa Piquetes", "Pastagens e Piquetes", "Alocacao de lotes e historico")
+    t1,t2,t3 = st.tabs(["Piquetes","Cadastrar","Alocar / Liberar"])
+    with t1:
+        pqs = listar_piquetes()
+        if pqs:
+            df_pq = pd.DataFrame(pqs, columns=["ID","Fazenda","Nome","Area ha","Cap UA"])
+            st.dataframe(df_pq, use_container_width=True)
+            p1,p2 = st.columns(2)
+            p1.metric("Total piquetes", len(pqs))
+            p2.metric("Area total (ha)", f"{sum(p[3] for p in pqs):.1f}")
+            dict_pq = {f"{p[2]} (ID {p[0]})": p[0] for p in pqs}
+            sel_pq  = st.selectbox("Historico do piquete", list(dict_pq.keys()))
+            hist = historico_piquete(dict_pq[sel_pq])
+            if hist:
+                df_h = pd.DataFrame(hist, columns=["ID","Lote","Entrada","Saida"])
+                st.dataframe(df_h, use_container_width=True)
+            else: st.info("Nenhum historico.")
+        else: st.info("Nenhum piquete cadastrado.")
+    with t2:
+        with st.form("form_pq"):
+            pq1,pq2,pq3 = st.columns(3)
+            with pq1: nome_pq = st.text_input("Nome *")
+            with pq2: area_pq = st.number_input("Area (ha)", 0.0, step=0.5)
+            with pq3: cap_pq  = st.number_input("Capacidade (UA)", 0.0, step=1.0)
+            if st.form_submit_button("Cadastrar", type="primary"):
+                if nome_pq:
+                    adicionar_piquete(nome_pq, area_pq, cap_pq)
+                    st.success("Piquete cadastrado!"); st.rerun()
+                else: st.error("Informe o nome.")
+    with t3:
+        pqs   = listar_piquetes()
+        lotes = listar_lotes()
+        if not pqs or not lotes: st.warning("Cadastre piquetes e lotes.")
+        else:
+            dict_pq = {f"{p[2]} (ID {p[0]})": p[0] for p in pqs}
+            dict_l  = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            al1,al2 = st.columns(2)
+            with al1:
+                st.subheader("Alocar")
+                with st.form("form_aloc"):
+                    pq_a  = st.selectbox("Piquete", list(dict_pq.keys()), key="al_pq")
+                    lt_a  = st.selectbox("Lote",    list(dict_l.keys()),  key="al_lt")
+                    dt_a  = st.date_input("Entrada",                      key="al_dt")
+                    if st.form_submit_button("Alocar", type="primary"):
+                        alocar_lote_piquete(dict_pq[pq_a], dict_l[lt_a], str(dt_a))
+                        st.success("Alocado!"); st.rerun()
+            with al2:
+                st.subheader("Liberar")
+                with st.form("form_lib"):
+                    pq_l = st.selectbox("Piquete", list(dict_pq.keys()), key="lib_pq")
+                    dt_l = st.date_input("Saida",                        key="lib_dt")
+                    if st.form_submit_button("Liberar", type="primary"):
+                        liberar_piquete(dict_pq[pq_l], str(dt_l))
+                        st.success("Piquete liberado!"); st.rerun()
+
+# ============================================================
+# PREVISAO ABATE
+# ============================================================
+elif menu == "Previsao Abate":
+    hdr("Previsao Abate", "Previsao de Abate", "Data estimada e receita projetada por GMD")
+    lote_id, _ = sel_lote("abate_lote")
+    if lote_id:
+        animais = listar_animais_por_lote(lote_id)
+        if not animais: st.warning("Nenhum animal."); st.stop()
+        preco_kg = st.number_input("Preco de abate (R$/kg)", 0.0, 100.0, 20.0)
+        st.info("Defina o peso alvo em Prontuario do Animal para cada animal.")
+        resultados = []
+        for a in animais:
+            prev = calcular_previsao_abate(a[0])
+            if "erro" not in prev:
+                resultados.append({"Animal": a[1], "Peso Atual": prev["peso_atual"],
+                    "Peso Alvo": prev["peso_alvo"], "GMD": prev["gmd"],
+                    "Dias Rest.": prev["dias_restantes"], "Data Prevista": prev["data_prevista"],
+                    "Receita Est.": round(prev["peso_alvo"]*preco_kg,2), "Confianca": prev["confianca"]})
+        if resultados:
+            df_prev = pd.DataFrame(resultados).sort_values("Dias Rest.")
+            st.dataframe(df_prev, use_container_width=True)
+            pr1,pr2 = st.columns(2)
+            pr1.metric("Animais analisados", len(resultados))
+            pr2.metric("Receita total estimada", f"R$ {sum(r['Receita Est.'] for r in resultados):,.2f}")
+            st.bar_chart(df_prev.set_index("Animal")["Dias Rest."])
+            for r in resultados:
+                if r["Dias Rest."] == 0:   st.success(f"{r['Animal']}: atingiu o peso alvo!")
+                elif r["Dias Rest."] <= 15: st.warning(f"{r['Animal']}: {r['Dias Rest.']} dias - prepare o abate")
+        else: st.info("Nenhum animal com peso alvo e pesagens suficientes.")
+
+# ============================================================
+# PRONTUARIO ANIMAL
+# ============================================================
+elif menu == "Prontuario Animal":
+    hdr("Prontuario Animal", "Prontuario Completo", "Historico de peso, saude e reproducao")
+    lotes = listar_lotes()
+    if not lotes: st.warning("Nenhum lote.")
+    else:
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        pr1,pr2 = st.columns(2)
+        with pr1: lote_s = st.selectbox("Lote", list(dict_l.keys()), key="pron_lote")
+        animais = listar_animais_por_lote(dict_l[lote_s])
+        if not animais: st.warning("Nenhum animal.")
+        else:
+            dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+            with pr2: anim_s = st.selectbox("Animal", list(dict_a.keys()), key="pron_anim")
+            animal_id = dict_a[anim_s]
+            det = obter_animal(animal_id)
+            t1,t2,t3 = st.tabs(["Dados","Pesagens","Ocorrencias"])
+            with t1:
+                with st.form("form_pron"):
+                    d1,d2 = st.columns(2)
+                    with d1:
+                        peso_alvo = st.number_input("Peso alvo abate (kg)", 0.0, 1000.0, float(det[7]) if det else 0.0)
+                        raca_p    = st.text_input("Raca", value=det[5] if det else "")
+                    with d2:
+                        obs_p = st.text_area("Observacoes clinicas", value=det[8] if det else "", height=100)
+                    if st.form_submit_button("Salvar", type="primary"):
+                        atualizar_animal_detalhes(animal_id, peso_alvo=peso_alvo, observacoes=obs_p)
+                        st.success("Prontuario atualizado!"); st.rerun()
+                if det and det[7] > 0:
+                    prev = calcular_previsao_abate(animal_id)
+                    if "erro" not in prev:
+                        st.divider()
+                        st.subheader("Previsao de Abate")
+                        pv1,pv2,pv3 = st.columns(3)
+                        pv1.metric("GMD", f"{prev['gmd']:.3f} kg/dia")
+                        pv2.metric("Dias restantes", prev["dias_restantes"])
+                        pv3.metric("Data prevista", prev["data_prevista"])
+            with t2:
+                ps = listar_pesagens(animal_id)
+                if ps:
+                    df_p = pd.DataFrame(ps, columns=["ID","Animal","Peso","Data"])
+                    df_p["Data"] = pd.to_datetime(df_p["Data"])
+                    df_p = df_p.sort_values("Data")
+                    st.line_chart(df_p.set_index("Data")["Peso"])
+                    st.dataframe(df_p, use_container_width=True)
+                else: st.info("Sem pesagens.")
+            with t3:
+                ocs = listar_ocorrencias(animal_id)
+                if ocs:
+                    df_oc = pd.DataFrame(ocs, columns=["ID","Animal","Data","Tipo","Desc","Grav","Custo","Dias","Status"])
+                    st.dataframe(df_oc, use_container_width=True)
+                    st.metric("Custo total", f"R$ {sum(o[6] for o in ocs if o[6]):.2f}")
+                else: st.success("Nenhuma ocorrencia.")
+                repros = listar_reproducao(animal_id)
+                if repros:
+                    st.subheader("Historico Reprodutivo")
+                    df_r = pd.DataFrame(repros, columns=["ID","Animal","Cio","Tipo","Diag","Result","Parto Prev","Parto Real","Obs"])
+                    st.dataframe(df_r, use_container_width=True)
+
+# ============================================================
+# MARGEM REAL
+# ============================================================
+elif menu == "Margem Real":
+    hdr("Margem Real", "Margem Real do Lote", "Resultado: compra x venda x custos")
+    lote_id, _ = sel_lote("margem_lote")
+    if lote_id:
+        t1,t2 = st.tabs(["Resultado","Registrar Venda"])
+        with t1:
+            mg = calcular_margem_lote(lote_id)
+            if mg:
+                if not mg["venda_registrada"]: st.info("Registre uma venda na aba ao lado para ver a margem real.")
+                m1,m2,m3 = st.columns(3)
+                m1.metric("Custo de compra",  f"R$ {mg['custo_compra']:,.2f}")
+                m2.metric("Receita real",      f"R$ {mg['receita_real']:,.2f}")
+                m3.metric("Custo sanitario",   f"R$ {mg['custo_sanitario']:,.2f}")
+                st.metric("Margem liquida", f"R$ {mg['margem']:,.2f}", delta=f"{mg['margem_pct']:.1f}%",
+                          delta_color="normal" if mg["margem"]>=0 else "inverse")
+                if mg["venda_registrada"]:
+                    st.success(f"Frigorifico: {mg['frigorific']} | Venda: {mg['data_venda']}")
+                vendas = listar_vendas_lote(lote_id)
+                if vendas:
+                    df_v = pd.DataFrame(vendas, columns=["ID","Lote","Data","R$/kg","Peso kg","Frigorifico","Obs"])
+                    st.dataframe(df_v, use_container_width=True)
+        with t2:
+            with st.form("form_venda"):
+                v1,v2 = st.columns(2)
+                with v1:
+                    data_v  = st.date_input("Data venda")
+                    pr_kg   = st.number_input("Preco de venda (R$/kg)", 0.0, 100.0, 22.0)
+                with v2:
+                    peso_v  = st.number_input("Peso total vendido (kg)", 0.0)
+                    frig_v  = st.text_input("Frigorifico")
+                    obs_v   = st.text_area("Observacao")
+                if st.form_submit_button("Registrar Venda", type="primary"):
+                    if peso_v > 0:
+                        registrar_venda_lote(lote_id, str(data_v), pr_kg, peso_v, frig_v, obs_v)
+                        registrar_auditoria(u["id"], "venda_lote", "vendas", lote_id, f"R${pr_kg}/kg {peso_v}kg")
+                        st.success("Venda registrada!"); st.rerun()
+                    else: st.error("Informe o peso total.")
+
+# ============================================================
+# COTACAO CEPEA
+# ============================================================
+elif menu == "Cotacao Cepea":
+    hdr("Cotacao Cepea", "Cotacao Boi Gordo", "Preco do boi gordo ESALQ/Cepea")
+    c1,c2 = st.columns([2,1])
+    with c1:
+        if st.button("Buscar cotacao atual"):
+            if _CEPEA:
+                from cepea import buscar_cotacao_cepea
+                with st.spinner("Buscando..."):
+                    res = buscar_cotacao_cepea()
+                if res["sucesso"]:
+                    salvar_cotacao(res["data"], res["preco"], res["fonte"])
+                    st.success(f"R$ {res['preco']:.2f}/@ - {res['data']}")
+                else:
+                    st.warning(f"Indisponivel: {res['msg']}")
+            else: st.warning("cepea.py nao encontrado.")
+    with c2:
+        with st.form("form_cot_m"):
+            dt_c = st.date_input("Data")
+            pr_c = st.number_input("Preco (R$/@)", 0.0, 1000.0, 195.0)
+            if st.form_submit_button("Salvar manual"):
+                salvar_cotacao(str(dt_c), pr_c, "manual")
+                st.success("Salvo!"); st.rerun()
+    cots = listar_cotacoes(0)
+    if cots:
+        ult = cots[-1]
+        st.metric("Ultima cotacao", f"R$ {ult[2]:.2f}/@", delta=f"{ult[1]} ({ult[3]})")
+        hist = historico_grafico(cots[-60:])
+        if hist["datas"]:
+            df_cot = pd.DataFrame({"Data":hist["datas"],"Preco R$/@":hist["precos"]}).set_index("Data")
+            st.line_chart(df_cot)
+    else:
+        st.info("Nenhuma cotacao. Insira manualmente ou clique em buscar.")
+
+# ============================================================
+# RASTREABILIDADE GTA
+# ============================================================
+elif menu == "Rastreabilidade GTA":
+    hdr("Rastreabilidade GTA", "GTA e SISBOV", "Guia de Transito Animal e certificacao")
+    t1,t2,t3 = st.tabs(["GTAs","Emitir GTA","SISBOV"])
+    with t1:
+        gtas = listar_gta()
+        if gtas:
+            df_g = pd.DataFrame(gtas, columns=["ID","Lote ID","Lote","Num GTA","Emissao","Origem","Destino","Qtd","Finalidade","Obs"])
+            st.dataframe(df_g, use_container_width=True)
+        else: st.info("Nenhuma GTA.")
+    with t2:
+        lotes = listar_lotes()
+        if not lotes: st.warning("Cadastre um lote.")
+        else:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            with st.form("form_gta"):
+                g1,g2 = st.columns(2)
+                with g1:
+                    lote_g  = st.selectbox("Lote", list(dict_l.keys()))
+                    num_g   = st.text_input("Numero GTA *")
+                    data_g  = st.date_input("Data emissao")
+                    qtd_g   = st.number_input("Quantidade animais", 1, step=1)
+                with g2:
+                    orig_g  = st.text_input("Origem *")
+                    dest_g  = st.text_input("Destino *")
+                    fin_g   = st.selectbox("Finalidade", ["Abate","Venda","Recria","Engorda","Reproducao"])
+                    obs_g   = st.text_area("Observacao")
+                if st.form_submit_button("Registrar GTA", type="primary"):
+                    if num_g and orig_g and dest_g:
+                        registrar_gta(dict_l[lote_g], num_g, str(data_g), orig_g, dest_g, int(qtd_g), fin_g, obs_g)
+                        registrar_auditoria(u["id"], "gta", "gta", dict_l[lote_g], num_g)
+                        st.success("GTA registrada!"); st.rerun()
+                    else: st.error("Preencha numero, origem e destino.")
+    with t3:
+        lotes = listar_lotes()
+        if lotes:
+            dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+            s1,s2 = st.columns(2)
+            with s1: lote_s = st.selectbox("Lote", list(dict_l.keys()), key="sib_lote")
+            anim_s = listar_animais_por_lote(dict_l[lote_s])
+            if anim_s:
+                dict_as = {f"{a[1]} (ID {a[0]})": a[0] for a in anim_s}
+                with s2: anim_ss = st.selectbox("Animal", list(dict_as.keys()), key="sib_anim")
+                aid_s = dict_as[anim_ss]
+                sb = obter_sisbov(aid_s)
+                if sb: st.success(f"SISBOV: **{sb[2]}** - {sb[3]}")
+                else:  st.info("Sem SISBOV.")
+                with st.form("form_sib"):
+                    num_sb = st.text_input("Numero SISBOV (15 digitos)")
+                    dt_sb  = st.date_input("Data certificacao")
+                    if st.form_submit_button("Cadastrar", type="primary"):
+                        if len(num_sb) == 15:
+                            registrar_sisbov(aid_s, num_sb, str(dt_sb))
+                            st.success("SISBOV cadastrado!"); st.rerun()
+                        else: st.error("SISBOV deve ter 15 digitos.")
+
+# ============================================================
+# EXPORTAR RELATORIOS
+# ============================================================
+elif menu == "Exportar Relatorios":
+    hdr("Exportar Relatorios", "Relatorios", "PDF e Excel do lote, sanitario e estoque")
+    lote_id, _ = sel_lote("exp_lote")
+    if lote_id:
+        lote = obter_lote(lote_id)
+        nome_lote = lote[1] if lote else "lote"
+        animais = listar_animais_por_lote(lote_id)
+        pd_dict = {a[0]: listar_pesagens(a[0])    for a in animais}
+        oc_dict = {a[0]: listar_ocorrencias(a[0]) for a in animais}
+        c1,c2 = st.columns(2)
+        with c1:
+            st.subheader("Excel do Lote")
+            st.write("Abas: Resumo, Animais, Pesagens, Ocorrencias")
+            if _EXP:
+                xls = gerar_excel_lote(nome_lote, animais, pd_dict, oc_dict)
+                st.download_button(
+                    label="Baixar Excel",
+                    data=xls,
+                    file_name=f"lote_{nome_lote.replace(' ','_')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_xls_lote",
+                )
+            else: st.warning("exports.py nao encontrado.")
+        with c2:
+            st.subheader("PDF do Lote")
+            if _EXP:
+                df_anim = pd.DataFrame(animais, columns=["ID","Identificacao","Idade","Lote ID"])
+                todos_p = [p for ps in pd_dict.values() for p in ps]
+                df_peso = pd.DataFrame(todos_p, columns=["ID","Animal ID","Peso","Data"]) if todos_p else pd.DataFrame()
+                todos_o = [o for os in oc_dict.values() for o in os]
+                df_oc   = pd.DataFrame(todos_o, columns=["ID","Animal","Data","Tipo","Desc","Grav","Custo","Dias","Status"]) if todos_o else pd.DataFrame()
+                secoes  = [{"titulo":"Animais","df":df_anim},{"titulo":"Pesagens","df":df_peso},{"titulo":"Ocorrencias","df":df_oc}]
+                pdf = gerar_pdf_relatorio(f"Relatorio {nome_lote}", secoes)
+                st.download_button(
+                    label="Baixar PDF",
+                    data=pdf,
+                    file_name=f"relatorio_{nome_lote.replace(' ','_')}.pdf",
+                    mime="application/pdf",
+                    key="dl_pdf_lote",
+                )
+            else: st.warning("exports.py nao encontrado.")
+        st.divider()
+        st.subheader("Excel Sanitario")
+        if _EXP:
+            vacs = listar_vacinas_agenda()
+            meds = listar_medicamentos()
+            xls2 = gerar_excel_sanitario(vacs, meds)
+            st.download_button(
+                label="Baixar Excel Sanitario",
+                data=xls2,
+                file_name="sanitario.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_xls_san",
+            )
+
+# ============================================================
+# BACKUP
+# ============================================================
+elif menu == "Backup":
+    hdr("Backup", "Backup do Sistema", "Download dos seus dados")
+    import database as _dbm
+    db_path = _dbm.DB_PATH
+    st.info(f"Banco: `{db_path}`")
+    c1,c2 = st.columns(2)
+    with c1:
+        st.subheader("Download ZIP (CSVs)")
+        if _BACKUP:
+            with st.spinner("Preparando..."):
                 dados_zip = gerar_backup_zip(db_path)
             nome_zip = nome_arquivo_backup("zip")
-            st.download_button(
-                "⬇️ Baixar Backup ZIP",
-                dados_zip,
-                nome_zip,
-                "application/zip",
-                key="dl_zip",
-            )
+            st.download_button("Baixar ZIP", dados_zip, nome_zip, "application/zip", key="dl_bkp_zip")
             registrar_auditoria(u["id"], "backup_zip", "sistema", None, nome_zip)
-
-    with col2:
-        st.subheader("🗄️ Download SQLite")
-        st.write("Cópia fiel do banco -- pode ser restaurada diretamente.")
-        if not _BACKUP_OK:
-            st.error("backup.py não encontrado no repositório.")
-        else:
-            with st.spinner("Preparando backup SQLite..."):
+        else: st.warning("backup.py nao encontrado.")
+    with c2:
+        st.subheader("Download SQLite")
+        if _BACKUP:
+            with st.spinner("Preparando..."):
                 dados_db = gerar_backup_sqlite(db_path)
             nome_db = nome_arquivo_backup("db")
-            st.download_button(
-                "⬇️ Baixar Backup SQLite",
-                dados_db,
-                nome_db,
-                "application/octet-stream",
-                key="dl_db",
-            )
-            registrar_auditoria(u["id"], "backup_sqlite", "sistema", None, nome_db)
+            st.download_button("Baixar SQLite", dados_db, nome_db, "application/octet-stream", key="dl_bkp_db")
+        else: st.warning("backup.py nao encontrado.")
 
-    st.divider()
-    st.subheader("📧 Enviar backup por e-mail")
+# ============================================================
+# NOTIFICACOES
+# ============================================================
+elif menu == "Notificacoes":
+    hdr("Notificacoes", "Central de Notificacoes", "Alertas por e-mail")
     if not email_configurado():
-        st.warning("Configure o SMTP em `.streamlit/secrets.toml` para envio por e-mail.")
+        st.warning("E-mail nao configurado.")
+        st.markdown("""
+**Para configurar:** crie `.streamlit/secrets.toml` com:
+```
+[email]
+smtp_host     = smtp.gmail.com
+smtp_port     = 587
+smtp_user     = seu@gmail.com
+smtp_password = senha_app
+remetente     = Gestao Pecuaria <seu@gmail.com>
+```
+Use **Senha de App** do Google (nao a senha da conta).
+""")
     else:
-        email_dest = st.text_input("E-mail de destino", value=u["email"])
-        if st.button("Enviar backup ZIP por e-mail"):
-            from backup import enviar_backup_email
-            import notifications as _notif
-            ok, msg, _, _ = enviar_backup_email(db_path, _notif, email_dest, u["nome"])
-            st.success(msg) if ok else st.warning(msg)
+        st.success("E-mail configurado.")
+        c1,c2 = st.columns(2)
+        with c1:
+            st.metric("Vacinas pendentes", len(pend))
+            if pend and st.button("Enviar alerta vacinas"):
+                vs = [{"lote":v[2],"vacina":v[3],"data_prevista":v[4]} for v in pend]
+                ok, msg = email_vacina_pendente(u["email"], u["nome"], vs)
+                st.success(msg) if ok else st.error(msg)
+            st.metric("Partos previstos", len(parto))
+            if parto and st.button("Enviar alerta partos"):
+                pts = [{"animal":p[1],"lote":p[2],"data_parto_previsto":p[3]} for p in parto]
+                ok, msg = email_parto_previsto(u["email"], u["nome"], pts)
+                st.success(msg) if ok else st.error(msg)
+        with c2:
+            st.metric("Medicamentos criticos", len(crit))
+            if crit and st.button("Enviar alerta meds"):
+                meds = [{"nome":m[1],"estoque_atual":m[3],"unidade":m[2],"validade":m[5] or ""} for m in crit]
+                ok, msg = email_medicamento_critico(u["email"], u["nome"], meds)
+                st.success(msg) if ok else st.error(msg)
+        if u["perfil"] == "admin":
+            st.divider()
+            st.subheader("Gestao de Planos")
+            usuarios = listar_usuarios()
+            if usuarios:
+                df_u = pd.DataFrame(usuarios, columns=["ID","Nome","Email","Perfil","Fazenda"])
+                st.dataframe(df_u, use_container_width=True)
+            with st.form("form_conv"):
+                uid_c = st.number_input("ID usuario para converter para PAGO", 1, step=1)
+                if st.form_submit_button("Converter para pago"):
+                    converter_para_pago(int(uid_c))
+                    st.success(f"Usuario {uid_c} convertido!"); st.rerun()
 
-# ===========================================================================
-# LOG DE AUDITORIA
-# ===========================================================================
-elif menu == "Log de Auditoria":
-    _page_header("📜", "Log de Auditoria", "Histórico completo de ações por usuário")
-
+# ============================================================
+# LOG AUDITORIA
+# ============================================================
+elif menu == "Log Auditoria":
+    hdr("Log Auditoria", "Log de Auditoria", "Historico de acoes por usuario")
     if u["perfil"] != "admin":
         st.warning("Acesso restrito a administradores.")
-        st.stop()
-
-    col1, col2 = st.columns(2)
-    limite = col1.slider("Últimos registros", 10, 500, 100)
-    usuario_filtro = col2.selectbox("Filtrar por usuário",
-                                     ["Todos"] + [f"{x[1]} (ID {x[0]})"
-                                                  for x in listar_usuarios()])
-    uid_f = None
-    if usuario_filtro != "Todos":
-        uid_f = int(usuario_filtro.split("ID ")[1].rstrip(")"))
-
-    logs = listar_auditoria(limite, uid_f)
-    if logs:
-        df_log = pd.DataFrame(logs, columns=["ID","Usuário","Ação",
-                                              "Tabela","Registro ID",
-                                              "Detalhe","Data/Hora"])
-        st.dataframe(df_log, use_container_width=True)
-        st.metric("📋 Total de registros", len(logs))
     else:
-        st.info("Nenhum registro de auditoria encontrado.")
+        c1,c2 = st.columns(2)
+        lim   = c1.slider("Ultimos registros", 10, 500, 100)
+        usuarios = listar_usuarios()
+        dict_us  = {"Todos": None, **{f"{x[1]} (ID {x[0]})": x[0] for x in usuarios}}
+        uf       = c2.selectbox("Filtrar usuario", list(dict_us.keys()))
+        logs = listar_auditoria(lim, dict_us[uf])
+        if logs:
+            df_log = pd.DataFrame(logs, columns=["ID","Usuario","Acao","Tabela","Reg ID","Detalhe","Data/Hora"])
+            st.dataframe(df_log, use_container_width=True)
+            st.metric("Total registros", len(logs))
+        else: st.info("Nenhum registro.")
+
+# ============================================================
+# ADMINISTRACAO
+# ============================================================
+elif menu == "Administracao":
+    hdr("Administracao", "Administracao", "Usuarios, planos e configuracoes")
+    is_admin = u["perfil"] == "admin"
+    t1,t2 = st.tabs(["Usuarios","Alterar Senha"])
+    with t1:
+        if not is_admin: st.warning("Acesso restrito a administradores.")
+        else:
+            usuarios = listar_usuarios()
+            if usuarios:
+                df_u = pd.DataFrame(usuarios, columns=["ID","Nome","Email","Perfil","Fazenda"])
+                st.dataframe(df_u, use_container_width=True)
+            st.subheader("Criar usuario")
+            with st.form("form_user"):
+                au1,au2 = st.columns(2)
+                with au1:
+                    n_nome  = st.text_input("Nome")
+                    n_email = st.text_input("Email")
+                with au2:
+                    n_senha = st.text_input("Senha", type="password")
+                    n_perf  = st.selectbox("Perfil", ["fazendeiro","veterinario","admin"])
+                if st.form_submit_button("Criar", type="primary"):
+                    if n_nome and n_email and n_senha:
+                        try:
+                            uid_n = criar_usuario(n_nome, n_email, n_senha, n_perf)
+                            ativar_trial(uid_n)
+                            st.success("Usuario criado!"); st.rerun()
+                        except Exception: st.error("Email ja cadastrado.")
+                    else: st.error("Preencha todos os campos.")
+    with t2:
+        with st.form("form_senha"):
+            senha_a = st.text_input("Senha atual", type="password")
+            nova_s  = st.text_input("Nova senha", type="password")
+            conf_s  = st.text_input("Confirmar", type="password")
+            if st.form_submit_button("Alterar", type="primary"):
+                if not autenticar_usuario(u["email"], senha_a): st.error("Senha atual incorreta.")
+                elif nova_s != conf_s:                          st.error("Senhas nao coincidem.")
+                elif len(nova_s) < 6:                          st.error("Minimo 6 caracteres.")
+                else:
+                    alterar_senha(u["id"], nova_s)
+                    st.success("Senha alterada!")
