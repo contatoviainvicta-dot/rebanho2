@@ -110,6 +110,14 @@ st.set_page_config(
 
 try:
     inicializar_banco()
+    # Mostrar qual banco está sendo usado (apenas para diagnóstico)
+    import database as _db_diag
+    if _db_diag._usar_postgres():
+        st.sidebar.success("Banco: PostgreSQL (Supabase)")
+    else:
+        diag = _db_diag._diagnostico_banco()
+        st.sidebar.error(f"SQLite local - dados nao persistem!")
+        st.sidebar.caption(diag)
 except Exception as _e_init:
     st.error(f"Erro ao inicializar banco: {_e_init}")
     st.stop()
