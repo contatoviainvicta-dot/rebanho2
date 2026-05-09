@@ -968,3 +968,100 @@ def resumo_lote(lote_id):
     return dict(total_animais=total, ativos=ativos, mortos=mortos,
                 gtas_emitidas=gtas[0], animais_saida_gta=int(gtas[1]),
                 ocorrencias=ocorr, custo_sanitario=round(custo,2), vacinas_pendentes=vac_pend)
+
+
+# ── EDICAO E EXCLUSAO ──────────────────────────────────────────────────────
+
+def atualizar_lote(lote_id, nome, descricao, data_entrada,
+                   qtd_comprada, qtd_recebida, transporte, preco_por_animal=None):
+    with _conexao() as conn:
+        conn.execute(
+            "UPDATE lotes SET nome=?,descricao=?,data_entrada=?,qtd_comprada=?,qtd_recebida=?,transporte=? WHERE id=?",
+            (nome, descricao, data_entrada, qtd_comprada, qtd_recebida, transporte, lote_id),
+        )
+        if preco_por_animal is not None:
+            conn.execute("UPDATE lotes SET preco_por_animal=? WHERE id=?", (preco_por_animal, lote_id))
+
+def excluir_lote(lote_id):
+    with _conexao() as conn:
+        conn.execute("DELETE FROM lotes WHERE id=?", (lote_id,))
+
+def atualizar_animal(animal_id, identificacao, idade):
+    with _conexao() as conn:
+        conn.execute(
+            "UPDATE animais SET identificacao=?,idade=? WHERE id=?",
+            (identificacao, idade, animal_id),
+        )
+
+def excluir_animal(animal_id):
+    with _conexao() as conn:
+        conn.execute("DELETE FROM animais WHERE id=?", (animal_id,))
+
+def atualizar_pesagem(pesagem_id, peso, data):
+    with _conexao() as conn:
+        conn.execute(
+            "UPDATE pesagens SET peso=?,data=? WHERE id=?",
+            (peso, data, pesagem_id),
+        )
+
+def excluir_pesagem(pesagem_id):
+    with _conexao() as conn:
+        conn.execute("DELETE FROM pesagens WHERE id=?", (pesagem_id,))
+
+def atualizar_ocorrencia(ocorrencia_id, tipo, descricao, gravidade,
+                          custo, dias_recuperacao, status, data=None):
+    with _conexao() as conn:
+        if data:
+            conn.execute(
+                "UPDATE ocorrencias SET tipo=?,descricao=?,gravidade=?,custo=?,dias_recuperacao=?,status=?,data=? WHERE id=?",
+                (tipo, descricao, gravidade, custo, dias_recuperacao, status, data, ocorrencia_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE ocorrencias SET tipo=?,descricao=?,gravidade=?,custo=?,dias_recuperacao=?,status=? WHERE id=?",
+                (tipo, descricao, gravidade, custo, dias_recuperacao, status, ocorrencia_id),
+            )
+
+def excluir_ocorrencia(ocorrencia_id):
+    with _conexao() as conn:
+        conn.execute("DELETE FROM ocorrencias WHERE id=?", (ocorrencia_id,))
+
+def listar_ocorrencias_em_tratamento():
+    from datetime import date as dt
+    with _conexao() as conn:
+        rows = conn.execute(
+            "SELECT o.id,o.animal_id,a.identificacao,l.nome,o.data,o.tipo,"
+            "o.gravidade,o.dias_recuperacao,o.custo,o.status,"
+            "date(o.data,'+'||o.dias_recuperacao||' days') as previsao_alta"
+            " FROM ocorrencias o"
+            " JOIN animais a ON a.id=o.animal_id"
+            " JOIN lotes l ON l.id=a.lote_id"
+            " WHERE o.status='Em tratamento'"
+            " ORDER BY previsao_alta ASC"
+        ).fetchall()
+        return [tuple(r) for r in rows]
+
+def listar_tratamentos_vencidos():
+    with _conexao() as conn:
+        rows = conn.execute(
+            "SELECT o.id,o.animal_id,a.identificacao,l.nome,o.data,o.tipo,"
+            "o.gravidade,o.dias_recuperacao,o.custo,o.status,"
+            "date(o.data,'+'||o.dias_recuperacao||' days') as previsao_alta"
+            " FROM ocorrencias o"
+            " JOIN animais a ON a.id=o.animal_id"
+            " JOIN lotes l ON l.id=a.lote_id"
+            " WHERE o.status='Em tratamento'"
+            " AND date(o.data,'+'||o.dias_recuperacao||' days') <= date('now')"
+            " ORDER BY previsao_alta ASC"
+        ).fetchall()
+        return [tuple(r) for r in rows]
+
+def listar_pesagens_lote(lote_id):
+    with _conexao() as conn:
+        rows = conn.execute(
+            "SELECT p.id,a.identificacao,p.peso,p.data,p.animal_id"
+            " FROM pesagens p JOIN animais a ON a.id=p.animal_id"
+            " WHERE a.lote_id=? ORDER BY p.data DESC,a.identificacao",
+            (lote_id,),
+        ).fetchall()
+        return [tuple(r) for r in rows]
