@@ -3,6 +3,26 @@
 
 import os as _os
 
+# Verificar/importar design system
+try:
+    from ui import (
+        card_kpi, card_kpi_row, alerta, badge,
+        badge_status_animal, badge_status_lote, badge_gravidade,
+        card_animal, insight_card,
+    )
+except ImportError:
+    # Fallback simples se ui.py nao estiver disponivel
+    def card_kpi(t, v, s='', cor=None, delta=None): pass
+    def card_kpi_row(itens): pass
+    def alerta(m, t='info'): pass
+    def badge(txt, ct, cf): return txt
+    def badge_status_animal(s): return s
+    def badge_status_lote(s): return s
+    def badge_gravidade(g): return g
+    def card_animal(*a, **k): return ''
+    def insight_card(*a, **k): return ''
+
+
 # Escrever database.py correto antes de qualquer import
 # Contem versao com _date_add para compatibilidade PostgreSQL/SQLite
 _DB_B64 = (
@@ -1251,11 +1271,82 @@ _DB_B64 = (
     'bS5kYXRhIERFU0MgTElNSVQgMTAwIgogICAgICAgICAgICApCiAgICAgICAgcm93cyA9IF9mZXRj'
     'aChjdXIpCiAgICAgICAgcmV0dXJuIFsoclsnaWQnXSxyWydhbmltYWxfaWQnXSxyWydpZGVudGlm'
     'aWNhY2FvJ10sCiAgICAgICAgICAgICAgICAgclsnbG90ZV9vcmlnZW0nXSxyWydsb3RlX2Rlc3Rp'
-    'bm8nXSxyWydkYXRhJ10sclsnbW90aXZvJ10pIGZvciByIGluIHJvd3NdCgoKZGVmIHNpbmNyb25p'
-    'emFyX3RvZG9zX2xvdGVzKCk6CiAgICBsb3RlcyA9IGxpc3Rhcl9sb3RlcygpCiAgICByZXN1bHRh'
-    'ZG9zID0gW10KICAgIGZvciBsIGluIGxvdGVzOgogICAgICAgIG4gPSBhdHVhbGl6YXJfcXRkX2xv'
-    'dGUobFswXSkKICAgICAgICByZXN1bHRhZG9zLmFwcGVuZCgobFswXSwgbFsxXSwgbikpCiAgICBy'
-    'ZXR1cm4gcmVzdWx0YWRvcwo='
+    'bm8nXSxyWydkYXRhJ10sclsnbW90aXZvJ10pIGZvciByIGluIHJvd3NdCgoKZGVmIGdlcmFyX2lu'
+    'c2lnaHRzX2xvdGUobG90ZV9pZCk6CiAgICBpbXBvcnQgcGFuZGFzIGFzIHBkCiAgICBmcm9tIGRh'
+    'dGV0aW1lIGltcG9ydCBkYXRlIGFzIF9kCiAgICBpbnNpZ2h0cyA9IFtdCiAgICBhbmltYWlzID0g'
+    'bGlzdGFyX2FuaW1haXNfcG9yX2xvdGUobG90ZV9pZCkKICAgIGlmIG5vdCBhbmltYWlzOgogICAg'
+    'ICAgIHJldHVybiBpbnNpZ2h0cwoKICAgICMgMS4gUXVlZGEgZGUgR01ECiAgICBnbWRzID0gW10K'
+    'ICAgIGZvciBhIGluIGFuaW1haXM6CiAgICAgICAgcHMgPSBsaXN0YXJfcGVzYWdlbnMoYVswXSkK'
+    'ICAgICAgICBpZiBsZW4ocHMpID49IDI6CiAgICAgICAgICAgIGRmID0gcGQuRGF0YUZyYW1lKHBz'
+    'LCBjb2x1bW5zPVsnaWQnLCdhaWQnLCdwZXNvJywnZGF0YSddKQogICAgICAgICAgICBkZlsnZGF0'
+    'YSddID0gcGQudG9fZGF0ZXRpbWUoZGZbJ2RhdGEnXSkKICAgICAgICAgICAgZGYgPSBkZi5zb3J0'
+    'X3ZhbHVlcygnZGF0YScpCiAgICAgICAgICAgIGRpYXMgPSAoZGZbJ2RhdGEnXS5pbG9jWy0xXSAt'
+    'IGRmWydkYXRhJ10uaWxvY1swXSkuZGF5cwogICAgICAgICAgICBpZiBkaWFzID4gMDoKICAgICAg'
+    'ICAgICAgICAgIGcgPSAoZGZbJ3Blc28nXS5pbG9jWy0xXSAtIGRmWydwZXNvJ10uaWxvY1swXSkg'
+    'LyBkaWFzCiAgICAgICAgICAgICAgICBnbWRzLmFwcGVuZChnKQogICAgaWYgZ21kczoKICAgICAg'
+    'ICBnbWRfbWVkaW8gPSBzdW0oZ21kcykgLyBsZW4oZ21kcykKICAgICAgICBpZiBnbWRfbWVkaW8g'
+    'PCAwOgogICAgICAgICAgICBpbnNpZ2h0cy5hcHBlbmQoZGljdCh0aXBvPSdjcml0aWNvJywgdGl0'
+    'dWxvPSdHTUQgbmVnYXRpdm8nLAogICAgICAgICAgICAgICAgZGVzY3JpY2FvPWYnTWVkaWEgZG8g'
+    'bG90ZToge2dtZF9tZWRpbzouM2Z9IGtnL2RpYS4gQW5pbWFpcyBwZXJkZW5kbyBwZXNvLicsCiAg'
+    'ICAgICAgICAgICAgICBhY2FvPSdSZXZpc2FyIGFsaW1lbnRhY2FvIGUgc2F1ZGUgZG8gbG90ZScp'
+    'KQogICAgICAgIGVsaWYgZ21kX21lZGlvIDwgMC41OgogICAgICAgICAgICBpbnNpZ2h0cy5hcHBl'
+    'bmQoZGljdCh0aXBvPSdhdmlzbycsIHRpdHVsbz0nR01EIGFiYWl4byBkbyBlc3BlcmFkbycsCiAg'
+    'ICAgICAgICAgICAgICBkZXNjcmljYW89ZidNZWRpYSBkbyBsb3RlOiB7Z21kX21lZGlvOi4zZn0g'
+    'a2cvZGlhLiBFc3BlcmFkbyBhY2ltYSBkZSAwLjguJywKICAgICAgICAgICAgICAgIGFjYW89J0F2'
+    'YWxpYXIgZGlldGEgZSBjb25kaWNhbyBzYW5pdGFyaWEnKSkKCiAgICAjIDIuIE1vcnRhbGlkYWRl'
+    'IGVsZXZhZGEKICAgIGZyb20gZGF0YWJhc2UgaW1wb3J0IHRheGFfbW9ydGFsaWRhZGVfbG90ZQog'
+    'ICAgbW9ydCA9IHRheGFfbW9ydGFsaWRhZGVfbG90ZShsb3RlX2lkKQogICAgaWYgbW9ydFsndGF4'
+    'YSddID49IDU6CiAgICAgICAgaW5zaWdodHMuYXBwZW5kKGRpY3QodGlwbz0nY3JpdGljbycsIHRp'
+    'dHVsbz0nTW9ydGFsaWRhZGUgZWxldmFkYScsCiAgICAgICAgICAgIGRlc2NyaWNhbz1mJ3ttb3J0'
+    'WyJtb3J0b3MiXX0gbW9ydGVzICh7bW9ydFsidGF4YSJdfSUgZG8gbG90ZSkuJywKICAgICAgICAg'
+    'ICAgYWNhbz0nSW52ZXN0aWdhciBjYXVzYSBlIGFjaW9uYXIgdmV0ZXJpbmFyaW8nKSkKICAgIGVs'
+    'aWYgbW9ydFsndGF4YSddID49IDI6CiAgICAgICAgaW5zaWdodHMuYXBwZW5kKGRpY3QodGlwbz0n'
+    'YXZpc28nLCB0aXR1bG89J01vcnRhbGlkYWRlIGFjaW1hIGRvIG5vcm1hbCcsCiAgICAgICAgICAg'
+    'IGRlc2NyaWNhbz1mJ3ttb3J0WyJtb3J0b3MiXX0gbW9ydGVzICh7bW9ydFsidGF4YSJdfSUgZG8g'
+    'bG90ZSkuJywKICAgICAgICAgICAgYWNhbz0nTW9uaXRvcmFyIGRlIHBlcnRvJykpCgogICAgIyAz'
+    'LiBWYWNpbmFzIGF0cmFzYWRhcwogICAgZnJvbSBkYXRhYmFzZSBpbXBvcnQgbGlzdGFyX3ZhY2lu'
+    'YXNfYWdlbmRhCiAgICB2YWNzID0gbGlzdGFyX3ZhY2luYXNfYWdlbmRhKGxvdGVfaWQpCiAgICBh'
+    'dHJhc2FkYXMgPSBbdiBmb3IgdiBpbiB2YWNzIGlmIHZbNV0gPT0gJ3BlbmRlbnRlJyBhbmQgc3Ry'
+    'KHZbM10pIDwgc3RyKF9kLnRvZGF5KCkpXQogICAgaWYgbGVuKGF0cmFzYWRhcykgPj0gMzoKICAg'
+    'ICAgICBpbnNpZ2h0cy5hcHBlbmQoZGljdCh0aXBvPSdjcml0aWNvJywgdGl0dWxvPSdWYWNpbmFz'
+    'IG11aXRvIGF0cmFzYWRhcycsCiAgICAgICAgICAgIGRlc2NyaWNhbz1mJ3tsZW4oYXRyYXNhZGFz'
+    'KX0gdmFjaW5hcyBwZW5kZW50ZXMgZW0gYXRyYXNvLicsCiAgICAgICAgICAgIGFjYW89J0FnZW5k'
+    'YXIgdmFjaW5hY2FvIHVyZ2VudGUnKSkKICAgIGVsaWYgbGVuKGF0cmFzYWRhcykgPiAwOgogICAg'
+    'ICAgIGluc2lnaHRzLmFwcGVuZChkaWN0KHRpcG89J2F2aXNvJywgdGl0dWxvPSdWYWNpbmFzIGVt'
+    'IGF0cmFzbycsCiAgICAgICAgICAgIGRlc2NyaWNhbz1mJ3tsZW4oYXRyYXNhZGFzKX0gdmFjaW5h'
+    'KHMpIHBlbmRlbnRlKHMpIGF0cmFzYWRhKHMpLicsCiAgICAgICAgICAgIGFjYW89J1ZlcmlmaWNh'
+    'ciBjYWxlbmRhcmlvIHNhbml0YXJpbycpKQoKICAgICMgNC4gQ3VzdG8gc2FuaXRhcmlvIGVsZXZh'
+    'ZG8KICAgIHAgPSBfcGgoKQogICAgd2l0aCBfY29uZXhhbygpIGFzIGNvbm46CiAgICAgICAgY3Vy'
+    'ID0gY29ubi5jdXJzb3IoKQogICAgICAgIGN1ci5leGVjdXRlKAogICAgICAgICAgICBmIlNFTEVD'
+    'VCBDT0FMRVNDRShTVU0oby5jdXN0byksMCkgRlJPTSBvY29ycmVuY2lhcyBvIgogICAgICAgICAg'
+    'ICBmIiBKT0lOIGFuaW1haXMgYSBPTiBhLmlkPW8uYW5pbWFsX2lkIFdIRVJFIGEubG90ZV9pZD17'
+    'cH0iLAogICAgICAgICAgICAobG90ZV9pZCwpLAogICAgICAgICkKICAgICAgICBjdXN0b19zYW4g'
+    'PSBmbG9hdChjdXIuZmV0Y2hvbmUoKVswXSBvciAwKQogICAgcnMgPSByZXN1bW9fbG90ZShsb3Rl'
+    'X2lkKQogICAgaWYgcnNbJ2F0aXZvcyddID4gMDoKICAgICAgICBjdXN0b19wb3JfYW5pbWFsID0g'
+    'Y3VzdG9fc2FuIC8gcnNbJ2F0aXZvcyddCiAgICAgICAgaWYgY3VzdG9fcG9yX2FuaW1hbCA+IDUw'
+    'MDoKICAgICAgICAgICAgaW5zaWdodHMuYXBwZW5kKGRpY3QodGlwbz0nY3JpdGljbycsIHRpdHVs'
+    'bz0nQ3VzdG8gc2FuaXRhcmlvIG11aXRvIGFsdG8nLAogICAgICAgICAgICAgICAgZGVzY3JpY2Fv'
+    'PWYnUiQge2N1c3RvX3Bvcl9hbmltYWw6LjBmfS9hbmltYWwuIFRvdGFsOiBSJCB7Y3VzdG9fc2Fu'
+    'Oi4wZn0uJywKICAgICAgICAgICAgICAgIGFjYW89J1JldmlzYXIgcHJvdG9jb2xvIHNhbml0YXJp'
+    'bycpKQogICAgICAgIGVsaWYgY3VzdG9fcG9yX2FuaW1hbCA+IDIwMDoKICAgICAgICAgICAgaW5z'
+    'aWdodHMuYXBwZW5kKGRpY3QodGlwbz0nYXZpc28nLCB0aXR1bG89J0N1c3RvIHNhbml0YXJpbyBl'
+    'bGV2YWRvJywKICAgICAgICAgICAgICAgIGRlc2NyaWNhbz1mJ1IkIHtjdXN0b19wb3JfYW5pbWFs'
+    'Oi4wZn0vYW5pbWFsLiBUb3RhbDogUiQge2N1c3RvX3NhbjouMGZ9LicsCiAgICAgICAgICAgICAg'
+    'ICBhY2FvPSdNb25pdG9yYXIgZ2FzdG9zIGNvbSBzYXVkZScpKQoKICAgICMgNS4gQW5pbWFpcyBz'
+    'ZW0gcGVzYWdlbQogICAgc2VtX3Blc2FnZW0gPSBzdW0oMSBmb3IgYSBpbiBhbmltYWlzIGlmIGxl'
+    'bihsaXN0YXJfcGVzYWdlbnMoYVswXSkpID09IDApCiAgICBpZiBzZW1fcGVzYWdlbSA+IDA6CiAg'
+    'ICAgICAgaW5zaWdodHMuYXBwZW5kKGRpY3QodGlwbz0naW5mbycsIHRpdHVsbz0nQW5pbWFpcyBz'
+    'ZW0gcGVzYWdlbScsCiAgICAgICAgICAgIGRlc2NyaWNhbz1mJ3tzZW1fcGVzYWdlbX0gYW5pbWFs'
+    'KGlzKSBzZW0gbmVuaHVtYSBwZXNhZ2VtIHJlZ2lzdHJhZGEuJywKICAgICAgICAgICAgYWNhbz0n'
+    'UmVnaXN0cmFyIHBlc2FnZW0gaW5pY2lhbCcpKQoKICAgICMgNi4gTG90ZSBzYXVkYXZlbAogICAg'
+    'aWYgbm90IGluc2lnaHRzOgogICAgICAgIGluc2lnaHRzLmFwcGVuZChkaWN0KHRpcG89J3Bvc2l0'
+    'aXZvJywgdGl0dWxvPSdMb3RlIHNhdWRhdmVsJywKICAgICAgICAgICAgZGVzY3JpY2FvPSdOZW5o'
+    'dW0gYWxlcnRhIGlkZW50aWZpY2Fkby4gQ29udGludWUgbW9uaXRvcmFuZG8uJywKICAgICAgICAg'
+    'ICAgYWNhbz1Ob25lKSkKCiAgICByZXR1cm4gaW5zaWdodHMKCgpkZWYgc2luY3Jvbml6YXJfdG9k'
+    'b3NfbG90ZXMoKToKICAgIGxvdGVzID0gbGlzdGFyX2xvdGVzKCkKICAgIHJlc3VsdGFkb3MgPSBb'
+    'XQogICAgZm9yIGwgaW4gbG90ZXM6CiAgICAgICAgbiA9IGF0dWFsaXphcl9xdGRfbG90ZShsWzBd'
+    'KQogICAgICAgIHJlc3VsdGFkb3MuYXBwZW5kKChsWzBdLCBsWzFdLCBuKSkKICAgIHJldHVybiBy'
+    'ZXN1bHRhZG9zCg=='
 )
 _db_bytes = __import__('base64').b64decode(''.join(_DB_B64))
 with open('database.py', 'wb') as _f:
@@ -1305,6 +1396,7 @@ from database import (
     listar_animais_por_status, listar_lotes_por_status,
     contagem_status_animais, STATUS_ANIMAL, STATUS_LOTE,
     transferir_animal, listar_movimentacoes,
+    gerar_insights_lote,
 )
 
 try:
@@ -1501,6 +1593,7 @@ with st.sidebar:
             ("Pesquisar Ocorrencias","Filtros avancados"),
         ],
         "Gestao": [
+            ("Workspace do Lote",    "Visao completa do lote"),
             ("Calendario Sanitario", "Vacinas e alertas"),
             ("Estoque Medicamentos", "Controle de estoque"),
             ("Controle Reprodutivo", "IATF e prenhez"),
@@ -3830,3 +3923,341 @@ elif menu == "Status do Lote":
                             registrar_auditoria(u["id"], "status_animal", "animais", aid_s, novo_sa)
                             st.success(f"Status: {novo_sa}")
                             st.rerun()
+
+# ============================================================
+# WORKSPACE DO LOTE
+# ============================================================
+elif menu == "Workspace do Lote":
+    hdr("Workspace do Lote", "Visao Completa", "Tudo sobre o lote em um lugar so")
+
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+        st.stop()
+
+    # Selector do lote no topo
+    todos_lotes_ws = listar_lotes_por_status()
+    dict_ws = {f"{l[1]}": l[0] for l in todos_lotes_ws}
+
+    col_sel, col_status = st.columns([3, 1])
+    with col_sel:
+        lote_ws_nome = st.selectbox("Selecione o lote", list(dict_ws.keys()), key="ws_lote")
+    lote_ws_id = dict_ws[lote_ws_nome]
+
+    lote_ws = obter_lote(lote_ws_id)
+    todos_ws = listar_lotes_por_status()
+    lote_ws_status = next((l[7] for l in todos_ws if l[0] == lote_ws_id), "ATIVO")
+
+    with col_status:
+        st.write("")
+        st.markdown(
+            badge_status_lote(lote_ws_status),
+            unsafe_allow_html=True
+        )
+
+    st.divider()
+
+    # KPIs do lote
+    rs_ws = resumo_lote(lote_ws_id)
+    animais_ws = listar_animais_por_lote(lote_ws_id)
+    mort_ws = taxa_mortalidade_lote(lote_ws_id)
+
+    gmds_ws = []
+    for a_ws in animais_ws:
+        ps_ws = listar_pesagens(a_ws[0])
+        if len(ps_ws) >= 2:
+            df_ws = pd.DataFrame(ps_ws, columns=['id','aid','peso','data'])
+            df_ws['data'] = pd.to_datetime(df_ws['data'])
+            df_ws = df_ws.sort_values('data')
+            dias_ws = (df_ws['data'].iloc[-1] - df_ws['data'].iloc[0]).days
+            if dias_ws > 0:
+                g_ws = (df_ws['peso'].iloc[-1] - df_ws['peso'].iloc[0]) / dias_ws
+                if g_ws >= 0: gmds_ws.append(g_ws)
+
+    gmd_ws = sum(gmds_ws)/len(gmds_ws) if gmds_ws else 0
+
+    card_kpi_row([
+        dict(titulo="Animais Ativos",    valor=rs_ws['ativos'],
+             subtitulo=f"de {rs_ws['total_animais']} totais"),
+        dict(titulo="GMD Medio",         valor=f"{gmd_ws:.3f} kg/d",
+             subtitulo="ganho diario medio",
+             cor='#1565C0' if gmd_ws >= 0.8 else '#E65100'),
+        dict(titulo="Mortalidade",       valor=f"{mort_ws['taxa']}%",
+             subtitulo=f"{mort_ws['mortos']} morte(s)",
+             cor='#B71C1C' if mort_ws['taxa'] > 2 else '#1F5C2E'),
+        dict(titulo="Custo Sanitario",   valor=f"R$ {rs_ws['custo_sanitario']:.0f}",
+             subtitulo=f"{rs_ws['ocorrencias']} ocorrencia(s)"),
+        dict(titulo="Vacinas Pendentes", valor=rs_ws['vacinas_pendentes'],
+             cor='#E65100' if rs_ws['vacinas_pendentes'] > 0 else '#1F5C2E'),
+    ])
+
+    st.write("")
+
+    # Insights automáticos
+    insights_ws = gerar_insights_lote(lote_ws_id)
+    if insights_ws:
+        cols_ins = st.columns(min(len(insights_ws), 3))
+        for i, ins in enumerate(insights_ws):
+            with cols_ins[i % 3]:
+                st.markdown(
+                    insight_card(ins['titulo'], ins['descricao'], ins['tipo'], ins.get('acao')),
+                    unsafe_allow_html=True
+                )
+        st.write("")
+
+    # Abas do workspace
+    aba_res, aba_anim, aba_pes, aba_san, aba_fin, aba_rel = st.tabs([
+        "Resumo", "Animais", "Pesagens", "Sanidade", "Financeiro", "Relatorios"
+    ])
+
+    # ── ABA RESUMO ────────────────────────────────────────────────────────────
+    with aba_res:
+        c1_r, c2_r = st.columns(2)
+
+        with c1_r:
+            st.subheader("Informacoes do Lote")
+            if lote_ws:
+                st.write(f"**Data de entrada:** {lote_ws[3]}")
+                st.write(f"**Transportadora:** {lote_ws[6] or 'Nao informada'}")
+                st.write(f"**Descricao:** {lote_ws[2] or 'Sem descricao'}")
+                st.write(f"**Preco por animal:** R$ {lote_ws[3] or 0}")
+
+            st.subheader("Status dos animais")
+            cont_ws = contagem_status_animais(lote_ws_id)
+            for status_k, qtd_k in cont_ws.items():
+                if qtd_k > 0:
+                    st.markdown(
+                        f"{badge_status_animal(status_k)} {qtd_k} animal(is)",
+                        unsafe_allow_html=True
+                    )
+
+        with c2_r:
+            st.subheader("Movimentacoes recentes")
+            movs_ws = listar_movimentacoes(lote_id=lote_ws_id)
+            if movs_ws:
+                for mv in movs_ws[:5]:
+                    st.caption(f"{mv[5]} | {mv[2]} | {mv[3]} -> {mv[4]} | {mv[6] or 'sem motivo'}")
+            else:
+                st.info("Nenhuma movimentacao registrada.")
+
+            st.subheader("GTAs emitidas")
+            gtas_ws = listar_gta(lote_ws_id)
+            if gtas_ws:
+                for g in gtas_ws[:3]:
+                    st.caption(f"{g[4]} | GTA {g[3]} | {g[7]} animais | {g[8]}")
+            else:
+                st.info("Nenhuma GTA emitida.")
+
+    # ── ABA ANIMAIS ───────────────────────────────────────────────────────────
+    with aba_anim:
+        filtro_status = st.selectbox(
+            "Filtrar por status", ["Todos"] + STATUS_ANIMAL, key="ws_filtro_anim"
+        )
+        if filtro_status == "Todos":
+            lista_anim_ws = listar_animais_por_status(lote_ws_id)
+        else:
+            lista_anim_ws = listar_animais_por_status(lote_ws_id, filtro_status)
+
+        st.caption(f"{len(lista_anim_ws)} animal(is) encontrado(s)")
+        st.write("")
+
+        cards_html = ""
+        for a_row in lista_anim_ws:
+            aid_r, ident_r = a_row[0], a_row[1]
+            status_r = a_row[4] if len(a_row) > 4 else 'ATIVO'
+            ps_r = listar_pesagens(aid_r)
+            sc_r = calcular_score_saude(aid_r)
+            n_oc = len(listar_ocorrencias(aid_r))
+
+            gmd_r = None
+            if len(ps_r) >= 2:
+                df_r = pd.DataFrame(ps_r, columns=['id','aid','peso','data'])
+                df_r['data'] = pd.to_datetime(df_r['data'])
+                df_r = df_r.sort_values('data')
+                dias_r = (df_r['data'].iloc[-1] - df_r['data'].iloc[0]).days
+                if dias_r > 0:
+                    gmd_r = (df_r['peso'].iloc[-1] - df_r['peso'].iloc[0]) / dias_r
+
+            cards_html += card_animal(ident_r, status_r, gmd_r, sc_r['score'], n_oc)
+
+        if cards_html:
+            st.markdown(cards_html, unsafe_allow_html=True)
+        else:
+            st.info("Nenhum animal encontrado com este filtro.")
+
+    # ── ABA PESAGENS ──────────────────────────────────────────────────────────
+    with aba_pes:
+        plote_ws = listar_pesagens_lote(lote_ws_id)
+        if plote_ws:
+            df_p_ws = pd.DataFrame(plote_ws,
+                columns=["ID","LoteID","Peso","Data","Animal","AnimalID"])
+            df_p_ws["Data"] = pd.to_datetime(df_p_ws["Data"])
+            df_p_ws = df_p_ws.sort_values("Data")
+
+            # Grafico de evolucao media
+            df_media = df_p_ws.groupby("Data")["Peso"].mean().reset_index()
+            st.subheader("Evolucao do peso medio do lote")
+            st.line_chart(df_media.set_index("Data")["Peso"])
+
+            st.subheader("Todas as pesagens")
+            st.dataframe(
+                df_p_ws[["Animal","Peso","Data"]].rename(columns={"Peso":"Peso (kg)"}),
+                use_container_width=True
+            )
+            st.caption(f"Total: {len(plote_ws)} pesagens | {df_p_ws['Animal'].nunique()} animais")
+        else:
+            st.info("Nenhuma pesagem registrada neste lote.")
+            if st.button("Ir para Registrar Pesagem", type="primary"):
+                st.session_state.menu = "Registrar Pesagem"
+                st.rerun()
+
+    # ── ABA SANIDADE ──────────────────────────────────────────────────────────
+    with aba_san:
+        c1_s, c2_s = st.columns(2)
+
+        with c1_s:
+            st.subheader("Ocorrencias")
+            todas_ocs = []
+            for a_s in animais_ws:
+                for oc_s in listar_ocorrencias(a_s[0]):
+                    todas_ocs.append({
+                        "Animal": a_s[1], "Data": oc_s[2], "Tipo": oc_s[3],
+                        "Gravidade": oc_s[5], "Custo": oc_s[6], "Status": oc_s[8]
+                    })
+            if todas_ocs:
+                df_oc_ws = pd.DataFrame(todas_ocs)
+                # Contagem por tipo
+                por_tipo = df_oc_ws.groupby("Tipo").size().reset_index(name="Qtd")
+                st.bar_chart(por_tipo.set_index("Tipo")["Qtd"])
+                em_trat = df_oc_ws[df_oc_ws["Status"]=="Em tratamento"]
+                if len(em_trat) > 0:
+                    st.warning(f"{len(em_trat)} ocorrencia(s) em tratamento")
+                    st.dataframe(em_trat[["Animal","Data","Tipo","Gravidade"]], use_container_width=True)
+            else:
+                st.success("Nenhuma ocorrencia registrada.")
+
+        with c2_s:
+            st.subheader("Vacinas")
+            vacs_ws = listar_vacinas_agenda(lote_ws_id)
+            pendentes_ws = [v for v in vacs_ws if v[5]=='pendente']
+            realizadas_ws = [v for v in vacs_ws if v[5]=='realizado']
+            st.metric("Pendentes", len(pendentes_ws))
+            st.metric("Realizadas", len(realizadas_ws))
+            if pendentes_ws:
+                st.warning("Vacinas pendentes:")
+                for vp in pendentes_ws[:5]:
+                    st.caption(f"{vp[2]} - Prevista: {vp[3]}")
+
+            st.subheader("Medicamentos criticos")
+            meds_ws = listar_medicamentos_criticos()
+            if meds_ws:
+                for m in meds_ws[:3]:
+                    st.warning(f"{m[1]}: {m[3]} {m[2]} (min: {m[4]})")
+            else:
+                st.success("Estoque OK")
+
+    # ── ABA FINANCEIRO ────────────────────────────────────────────────────────
+    with aba_fin:
+        col_f1, col_f2 = st.columns(2)
+
+        with col_f1:
+            st.subheader("Custo de aquisicao")
+            preco_anim = obter_lote(lote_ws_id)
+            custo_aq = 0
+            if preco_anim:
+                try:
+                    with __import__('database')._conexao() as _conn:
+                        _cur = _conn.cursor()
+                        _cur.execute(
+                            f"SELECT COALESCE(preco_por_animal,0) FROM lotes WHERE id={__import__('database')._ph()}",
+                            (lote_ws_id,)
+                        )
+                        preco_u = float(_cur.fetchone()[0] or 0)
+                    custo_aq = preco_u * rs_ws['total_animais']
+                    st.metric("Custo total de compra", f"R$ {custo_aq:,.0f}")
+                    st.metric("Preco por animal", f"R$ {preco_u:,.0f}")
+                except Exception:
+                    pass
+
+            st.metric("Custo sanitario", f"R$ {rs_ws['custo_sanitario']:,.0f}")
+            custo_total = custo_aq + rs_ws['custo_sanitario']
+            st.metric("Custo total estimado", f"R$ {custo_total:,.0f}")
+
+        with col_f2:
+            st.subheader("Venda e margem")
+            vendas_ws = listar_vendas_lote(lote_ws_id)
+            if vendas_ws:
+                v = vendas_ws[0]
+                receita = v[3] * v[4]
+                margem = receita - custo_aq - rs_ws['custo_sanitario']
+                st.metric("Receita", f"R$ {receita:,.0f}")
+                st.metric("Margem", f"R$ {margem:,.0f}",
+                          delta=f"{(margem/custo_aq*100 if custo_aq else 0):.1f}%")
+                st.caption(f"Venda em {v[2]} | {v[3]} kg | {v[5]}")
+            else:
+                st.info("Nenhuma venda registrada.")
+                custo_diar = st.number_input("Custo diario/animal (R$)", 0.0, value=8.0, key="ws_cd")
+                dias_ws2 = (date.today() - pd.to_datetime(lote_ws[3] if lote_ws else date.today()).date()).days
+                custo_op = custo_diar * rs_ws['ativos'] * max(dias_ws2, 1)
+                st.metric("Custo operacional estimado", f"R$ {custo_op:,.0f}",
+                          help=f"Baseado em {dias_ws2} dias no lote")
+
+    # ── ABA RELATORIOS ────────────────────────────────────────────────────────
+    with aba_rel:
+        st.subheader("Exportar dados deste lote")
+        col_r1, col_r2 = st.columns(2)
+
+        with col_r1:
+            if st.button("Gerar Excel do lote", use_container_width=True, type="primary"):
+                try:
+                    pesagens_dict = {a[0]: listar_pesagens(a[0]) for a in animais_ws}
+                    ocorr_dict    = {a[0]: listar_ocorrencias(a[0]) for a in animais_ws}
+                    xls = gerar_excel_lote(lote_ws_nome, animais_ws, pesagens_dict, ocorr_dict)
+                    st.download_button(
+                        "Baixar Excel", xls,
+                        file_name=f"lote_{lote_ws_nome.replace(' ','_')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+
+        with col_r2:
+            if st.button("Gerar PDF do lote", use_container_width=True):
+                try:
+                    secoes = [
+                        dict(titulo="Animais", df=pd.DataFrame(
+                            animais_ws, columns=["ID","Identificacao","Idade","LoteID"]
+                        )),
+                    ]
+                    plote2 = listar_pesagens_lote(lote_ws_id)
+                    if plote2:
+                        secoes.append(dict(titulo="Pesagens", df=pd.DataFrame(
+                            plote2, columns=["ID","LoteID","Peso","Data","Animal","AnimalID"]
+                        )[["Animal","Peso","Data"]]))
+                    pdf = gerar_pdf_relatorio(f"Relatorio - {lote_ws_nome}", secoes)
+                    st.download_button(
+                        "Baixar PDF", pdf,
+                        file_name=f"relatorio_{lote_ws_nome.replace(' ','_')}.pdf",
+                        mime="application/pdf"
+                    )
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+
+        st.divider()
+        st.subheader("Prontuario rapido por animal")
+        if animais_ws:
+            dict_anim_r = {a[1]: a[0] for a in animais_ws}
+            anim_r = st.selectbox("Animal", list(dict_anim_r.keys()), key="ws_pront")
+            aid_r2 = dict_anim_r[anim_r]
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                ps_r2 = listar_pesagens(aid_r2)
+                st.metric("Pesagens", len(ps_r2))
+                if ps_r2:
+                    ultimo = ps_r2[-1]
+                    st.metric("Ultimo peso", f"{ultimo[2]:.1f} kg", help=str(ultimo[3]))
+            with col_p2:
+                ocs_r2 = listar_ocorrencias(aid_r2)
+                sc_r2 = calcular_score_saude(aid_r2)
+                st.metric("Score saude", f"{sc_r2['score']}/100")
+                st.metric("Ocorrencias", len(ocs_r2))
