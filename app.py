@@ -1,7 +1,10 @@
-‘’’
-Sistema de Gestão Pecuária – app principal.
-Execute com:  streamlit run app.py
-‘’’
+# Sistema de Gestao Pecuaria – app principal.
+
+# Execute com:  streamlit run app.py
+
+import os as _os
+if not _os.path.exists(‘database.py’):
+exec(open(‘setup_files.py’).read())
 
 import streamlit as st
 import pandas as pd
