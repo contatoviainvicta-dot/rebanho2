@@ -1588,11 +1588,11 @@ def hdr(icone, titulo, sub=""):
     if sub: st.caption(sub)
     st.divider()
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _listar_lotes_cache():
     return listar_lotes()
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _listar_animais_cache(lote_id):
     return listar_animais_por_lote(lote_id)
 
@@ -1675,7 +1675,7 @@ with st.sidebar:
         st.success("Plano ativo")
 
     # Alertas sidebar com cache de 3 minutos
-    @st.cache_data(ttl=180, show_spinner=False)
+    @st.cache_data(ttl=600, show_spinner=False)
     def _alertas_sidebar():
         return dict(
             trat_venc = listar_tratamentos_vencidos(),
@@ -1779,7 +1779,7 @@ if menu == "Inicio":
     st.caption(datetime.now().strftime("%d/%m/%Y %H:%M"))
     st.divider()
 
-    @st.cache_data(ttl=60, show_spinner=False)
+    @st.cache_data(ttl=300, show_spinner=False)
     def _dash_home():
         return resumo_dashboard(), listar_lotes()
 
@@ -1837,7 +1837,7 @@ if menu == "Inicio":
     else:
         ncols = min(3, len(lotes))
         cols  = st.columns(ncols)
-        @st.cache_data(ttl=60, show_spinner=False)
+        @st.cache_data(ttl=300, show_spinner=False)
         def _rs_lotes(ids):
             return {lid: resumo_lote(lid) for lid in ids}
         _rs_map = _rs_lotes(tuple(l[0] for l in lotes[:6]))
@@ -1926,7 +1926,6 @@ elif menu == "Cadastrar Lote":
                 lid = adicionar_lote(nome, descricao, str(data_ent), qtd_comp, qtd_rec, transporte)
                 registrar_auditoria(u["id"], "criar_lote", "lotes", lid, nome)
                 st.success(f"Lote **{nome}** criado!")
-                st.balloons()
     with c2:
         st.markdown("#### Dicas")
         st.info("Use um nome facil de identificar, ex: Nelore Jan/25")
@@ -2922,7 +2921,7 @@ elif menu == "Previsao Abate":
 elif menu == "Prontuario Animal":
     hdr("Prontuario Animal", "Prontuario Completo", "Historico de peso, saude e reproducao")
 
-    @st.cache_data(ttl=60, show_spinner="Carregando prontuario...")
+    @st.cache_data(ttl=900, show_spinner="Carregando prontuario...")
     def _dados_prontuario(animal_id):
         return dict(
             pesagens    = listar_pesagens(animal_id),
@@ -3901,7 +3900,6 @@ elif menu == "Gerenciar Ocorrencias":
                                     f"{tipo_oe}/{grav_oe}/{stat_oe}")
                 if stat_oe == "Resolvido" and stat_cur == "Em tratamento":
                     st.success("Tratamento encerrado! Ocorrencia marcada como Resolvida.")
-                    st.balloons()
                 else:
                     st.success("Ocorrencia atualizada!")
                 st.rerun()
@@ -3977,7 +3975,6 @@ elif menu == "Transferir Animal":
                 registrar_auditoria(u["id"], "transferir_animal", "animais", animal_id,
                                     f"{lote_orig_s} -> {lote_dest_s}")
                 st.success(f"Animal transferido com sucesso!")
-                st.balloons()
                 st.rerun()
             else:
                 st.error(res["msg"])
@@ -4000,7 +3997,7 @@ elif menu == "Transferir Animal":
                                     f"{ok_count} animais -> {lote_dest_s}")
                 st.success(f"{ok_count} animal(is) transferido(s) com sucesso!")
                 if ok_count > 0:
-                    st.balloons()
+                    pass  # transferencia ok
                 st.rerun()
 
     with tab_historico:
@@ -4121,9 +4118,36 @@ elif menu == "Workspace do Lote":
         lote_ws_nome = st.selectbox("Selecione o lote", list(dict_ws.keys()), key="ws_lote")
     lote_ws_id = dict_ws[lote_ws_nome]
 
-    lote_ws = obter_lote(lote_ws_id)
-    todos_ws = listar_lotes_por_status()
-    lote_ws_status = next((l[7] for l in todos_ws if l[0] == lote_ws_id), "ATIVO")
+    @st.cache_data(ttl=300, show_spinner="Carregando dados do lote...")
+    def _ws_dados(lid):
+        todos = listar_lotes_por_status()
+        return dict(
+            lote        = obter_lote(lid),
+            status      = next((l[7] for l in todos if l[0]==lid), "ATIVO"),
+            rs          = resumo_lote(lid),
+            animais     = listar_animais_por_lote(lid),
+            mort        = taxa_mortalidade_lote(lid),
+            gmds_map    = calcular_gmds_lote(lid),
+            insights    = gerar_insights_lote(lid),
+            gtas        = listar_gta(lid),
+            movs        = listar_movimentacoes(lote_id=lid),
+            vacs        = listar_vacinas_agenda(lid),
+            plote       = listar_pesagens_lote(lid),
+            todas_ocs   = listar_ocorrencias_todos_animais(lid),
+            vendas      = listar_vendas_lote(lid),
+            scores      = calcular_scores_lote(lid),
+            cont_status = contagem_status_animais(lid),
+        )
+
+    _ws = _ws_dados(lote_ws_id)
+    lote_ws        = _ws['lote']
+    lote_ws_status = _ws['status']
+    rs_ws          = _ws['rs']
+    animais_ws     = _ws['animais']
+    mort_ws        = _ws['mort']
+    gmds_ws_map    = _ws['gmds_map']
+    gmds_ws        = [g for g in gmds_ws_map.values() if g >= 0]
+    gmd_ws         = sum(gmds_ws)/len(gmds_ws) if gmds_ws else 0
 
     with col_status:
         st.write("")
@@ -4133,16 +4157,6 @@ elif menu == "Workspace do Lote":
         )
 
     st.divider()
-
-    # KPIs do lote
-    rs_ws = resumo_lote(lote_ws_id)
-    animais_ws = listar_animais_por_lote(lote_ws_id)
-    mort_ws = taxa_mortalidade_lote(lote_ws_id)
-
-    # GMDs em batch - uma unica query
-    gmds_ws_map = calcular_gmds_lote(lote_ws_id)
-    gmds_ws = [g for g in gmds_ws_map.values() if g >= 0]
-    gmd_ws  = sum(gmds_ws)/len(gmds_ws) if gmds_ws else 0
 
     card_kpi_row([
         dict(titulo="Animais Ativos",    valor=rs_ws['ativos'],
@@ -4191,7 +4205,7 @@ elif menu == "Workspace do Lote":
                 st.write(f"**Preco por animal:** R$ {lote_ws[3] or 0}")
 
             st.subheader("Status dos animais")
-            cont_ws = contagem_status_animais(lote_ws_id)
+            cont_ws = _ws['cont_status']
             for status_k, qtd_k in cont_ws.items():
                 if qtd_k > 0:
                     st.markdown(
@@ -4229,10 +4243,10 @@ elif menu == "Workspace do Lote":
         st.caption(f"{len(lista_anim_ws)} animal(is) encontrado(s)")
         st.write("")
 
-        # Carregar dados em batch (sem N+1 queries)
-        scores_ws_map = calcular_scores_lote(lote_ws_id)
+        # Usar dados ja carregados no cache
+        scores_ws_map = _ws['scores']
         ocs_ws_map = {}
-        for oc_row in listar_ocorrencias_todos_animais(lote_ws_id):
+        for oc_row in _ws['todas_ocs']:
             ocs_ws_map.setdefault(oc_row[1], []).append(oc_row)
 
         cards_html = ""
