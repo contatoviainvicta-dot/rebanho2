@@ -34,7 +34,7 @@ from database import (
     salvar_cotacao, listar_cotacoes, obter_ultima_cotacao,
     calcular_gmd_temporal, calcular_previsao_abate,
     importar_pesagens_csv, importar_animais_csv,
-    atualizar_qtd_lote, resumo_lote,
+    atualizar_qtd_lote, resumo_lote, sincronizar_todos_lotes,
     atualizar_lote, excluir_lote,
     atualizar_animal, excluir_animal,
     atualizar_pesagem, excluir_pesagem,
@@ -1987,6 +1987,17 @@ elif menu == "Administracao":
 # ============================================================
 elif menu == "Editar Lote":
     hdr("Editar Lote", "Editar / Excluir Lote", "Altere ou remova um lote cadastrado")
+
+    # Botao de sincronizacao em massa (corrige dados historicos)
+    with st.expander("Corrigir contagem de animais em todos os lotes"):
+        st.caption("Use este botao se a quantidade de animais exibida estiver incorreta.")
+        if st.button("Sincronizar todos os lotes agora", key="sync_todos"):
+            resultados = sincronizar_todos_lotes()
+            for lid_s, nome_s, n_s in resultados:
+                st.write(f"Lote **{nome_s}**: {n_s} animais ativos")
+            st.success("Contagens atualizadas com sucesso!")
+            st.rerun()
+
     lotes = listar_lotes()
     if not lotes:
         st.warning("Nenhum lote cadastrado.")
@@ -2005,6 +2016,10 @@ elif menu == "Editar Lote":
         k4.metric("GTAs emitidas",  rs["gtas_emitidas"])
         st.divider()
 
+        # Contagem real de animais ativos (fonte da verdade)
+        ativos_reais = rs["ativos"]
+        st.info(f"Animais ativos no banco: **{ativos_reais}** (calculado automaticamente a partir dos cadastros)")
+
         tab_edit, tab_del = st.tabs(["Editar dados", "Excluir lote"])
 
         with tab_edit:
@@ -2017,18 +2032,17 @@ elif menu == "Editar Lote":
                     transp_e   = st.text_input("Transportadora",  value=lote[6] or "")
                 with el2:
                     desc_e     = st.text_area("Descricao",        value=lote[2] or "", height=70)
-                    qtd_rec_e  = st.number_input("Qtd recebida",  0, step=1, value=int(lote[5]))
+                    st.caption(f"Qtd recebida atual: {ativos_reais} animais ativos (atualizado automaticamente)")
                     preco_e    = st.number_input("Preco por animal (R$)", 0.0, step=50.0)
                 salvar_e = st.form_submit_button("Salvar alteracoes", type="primary", use_container_width=True)
             if salvar_e:
                 if not nome_e:
                     st.error("Informe o nome do lote.")
-                elif qtd_rec_e > qtd_comp_e:
-                    st.error("Qtd recebida nao pode ser maior que comprada.")
                 else:
-                    atualizar_lote(lote_id, nome_e, desc_e, str(data_e), qtd_comp_e, qtd_rec_e, transp_e, preco_e)
+                    # qtd_recebida e sempre recalculada pelos animais ativos reais
+                    atualizar_lote(lote_id, nome_e, desc_e, str(data_e), qtd_comp_e, ativos_reais, transp_e, preco_e)
                     registrar_auditoria(u["id"], "editar_lote", "lotes", lote_id, nome_e)
-                    st.success(f"Lote **{nome_e}** atualizado!")
+                    st.success(f"Lote **{nome_e}** atualizado! Animais ativos: {ativos_reais}")
                     st.rerun()
 
         with tab_del:
