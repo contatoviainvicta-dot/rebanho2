@@ -35,6 +35,12 @@ from database import (
     calcular_gmd_temporal, calcular_previsao_abate,
     importar_pesagens_csv, importar_animais_csv,
     atualizar_qtd_lote, resumo_lote,
+    atualizar_lote, excluir_lote,
+    atualizar_animal, excluir_animal,
+    atualizar_pesagem, excluir_pesagem,
+    atualizar_ocorrencia, excluir_ocorrencia,
+    listar_tratamentos_vencidos, listar_ocorrencias_em_tratamento,
+    listar_pesagens_lote,
 )
 
 try:
