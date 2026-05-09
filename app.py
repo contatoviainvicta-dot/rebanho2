@@ -171,6 +171,11 @@ with st.sidebar:
     else:
         st.success("Plano ativo")
 
+    # Tratamentos vencidos
+    _trat_venc = listar_tratamentos_vencidos()
+    if _trat_venc:
+        st.sidebar.error(f"{len(_trat_venc)} trat. pendente(s) de resolucao!")
+
     pend  = listar_vacinas_pendentes()
     crit  = listar_medicamentos_criticos()
     parto = listar_partos_previstos()
@@ -195,6 +200,10 @@ with st.sidebar:
             ("Registrar Ocorrencia", "Nova ocorrencia"),
             ("Registrar Morte",      "Baixa de animal"),
             ("Importar CSV",         "Importacao em lote"),
+            ("Editar Lote",          "Alterar dados do lote"),
+            ("Editar Animal",        "Alterar dados do animal"),
+            ("Editar Pesagens",      "Corrigir ou excluir pesagens"),
+            ("Gerenciar Ocorrencias","Editar e resolver tratamentos"),
         ],
         "Analise": [
             ("Dashboard Sanitario",  "Incidencias e alertas"),
@@ -1966,3 +1975,379 @@ elif menu == "Administracao":
                 else:
                     alterar_senha(u["id"], nova_s)
                     st.success("Senha alterada!")
+
+# ============================================================
+# EDITAR LOTE
+# ============================================================
+elif menu == "Editar Lote":
+    hdr("Editar Lote", "Editar / Excluir Lote", "Altere ou remova um lote cadastrado")
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+    else:
+        dict_l  = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        lote_sel = st.selectbox("Selecione o lote para editar", list(dict_l.keys()), key="ed_lote")
+        lote_id  = dict_l[lote_sel]
+        lote     = obter_lote(lote_id)
+        rs       = resumo_lote(lote_id)
+
+        # Resumo do lote
+        k1,k2,k3,k4 = st.columns(4)
+        k1.metric("Animais ativos", rs["ativos"])
+        k2.metric("Ocorrencias",    rs["ocorrencias"])
+        k3.metric("Mortes",         rs["mortos"])
+        k4.metric("GTAs emitidas",  rs["gtas_emitidas"])
+        st.divider()
+
+        tab_edit, tab_del = st.tabs(["Editar dados", "Excluir lote"])
+
+        with tab_edit:
+            with st.form("form_edit_lote"):
+                el1,el2 = st.columns(2)
+                with el1:
+                    nome_e     = st.text_input("Nome *",          value=lote[1])
+                    data_e     = st.date_input("Data entrada",    value=pd.to_datetime(lote[3]).date())
+                    qtd_comp_e = st.number_input("Qtd comprada",  0, step=1, value=int(lote[4]))
+                    transp_e   = st.text_input("Transportadora",  value=lote[6] or "")
+                with el2:
+                    desc_e     = st.text_area("Descricao",        value=lote[2] or "", height=70)
+                    qtd_rec_e  = st.number_input("Qtd recebida",  0, step=1, value=int(lote[5]))
+                    preco_e    = st.number_input("Preco por animal (R$)", 0.0, step=50.0)
+                salvar_e = st.form_submit_button("Salvar alteracoes", type="primary", use_container_width=True)
+            if salvar_e:
+                if not nome_e:
+                    st.error("Informe o nome do lote.")
+                elif qtd_rec_e > qtd_comp_e:
+                    st.error("Qtd recebida nao pode ser maior que comprada.")
+                else:
+                    atualizar_lote(lote_id, nome_e, desc_e, str(data_e), qtd_comp_e, qtd_rec_e, transp_e, preco_e)
+                    registrar_auditoria(u["id"], "editar_lote", "lotes", lote_id, nome_e)
+                    st.success(f"Lote **{nome_e}** atualizado!")
+                    st.rerun()
+
+        with tab_del:
+            st.warning("A exclusao e permanente e nao pode ser desfeita.")
+            n_anim = contar_animais_no_lote(lote_id, incluir_inativos=True)
+            if n_anim > 0:
+                st.error(f"Impossivel excluir: este lote tem {n_anim} animal(is) cadastrado(s).")
+                st.info("Exclua ou transfira todos os animais antes de remover o lote.")
+            else:
+                confirma = st.checkbox("Confirmo que desejo excluir este lote permanentemente")
+                if confirma:
+                    if st.button("Excluir lote definitivamente", type="primary"):
+                        excluir_lote(lote_id)
+                        registrar_auditoria(u["id"], "excluir_lote", "lotes", lote_id, lote[1])
+                        st.success("Lote excluido com sucesso.")
+                        st.rerun()
+
+# ============================================================
+# EDITAR ANIMAL
+# ============================================================
+elif menu == "Editar Animal":
+    hdr("Editar Animal", "Editar / Excluir Animal", "Altere ou remova um animal cadastrado")
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+    else:
+        dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        ea1,ea2 = st.columns(2)
+        with ea1: lote_sel = st.selectbox("Lote", list(dict_l.keys()), key="ea_lote")
+        lote_id  = dict_l[lote_sel]
+        # Mostrar todos incluindo inativos para poder editar
+        animais  = listar_animais_por_lote(lote_id, incluir_inativos=True)
+        if not animais:
+            st.warning("Nenhum animal neste lote.")
+        else:
+            dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+            with ea2: anim_sel = st.selectbox("Animal", list(dict_a.keys()), key="ea_anim")
+            animal_id = dict_a[anim_sel]
+            det = obter_animal(animal_id)
+
+            # Indicadores do animal
+            n_pes = len(listar_pesagens(animal_id))
+            n_ocs = len(listar_ocorrencias(animal_id))
+            sc    = calcular_score_saude(animal_id)
+            i1,i2,i3 = st.columns(3)
+            i1.metric("Pesagens",     n_pes)
+            i2.metric("Ocorrencias",  n_ocs)
+            i3.metric("Score saude",  f"{sc['score']}/100")
+            st.divider()
+
+            tab_edit, tab_del = st.tabs(["Editar dados", "Excluir animal"])
+
+            with tab_edit:
+                with st.form("form_edit_animal"):
+                    eab1,eab2 = st.columns(2)
+                    with eab1:
+                        ident_e  = st.text_input("Identificacao / Brinco *", value=det[1] if det else "")
+                        idade_e  = st.number_input("Idade (meses)", 0, 240, value=int(det[2]) if det else 0)
+                        raca_e   = st.text_input("Raca", value=det[5] if det else "")
+                    with eab2:
+                        p_alvo_e = st.number_input("Peso alvo abate (kg)", 0.0, value=float(det[7]) if det else 0.0)
+                        sexo_e   = st.selectbox("Sexo", ["indefinido","macho","femea"],
+                                                 index=["indefinido","macho","femea"].index(det[4])
+                                                 if det and det[4] in ["indefinido","macho","femea"] else 0)
+                        obs_e    = st.text_area("Observacoes", value=det[8] if det else "", height=68)
+                    salvar_ea = st.form_submit_button("Salvar alteracoes", type="primary", use_container_width=True)
+                if salvar_ea:
+                    if not ident_e:
+                        st.error("Informe a identificacao.")
+                    else:
+                        atualizar_animal(animal_id, ident_e, idade_e)
+                        atualizar_animal_detalhes(animal_id,
+                                                  peso_alvo=p_alvo_e if p_alvo_e > 0 else None,
+                                                  observacoes=obs_e)
+                        registrar_auditoria(u["id"], "editar_animal", "animais", animal_id, ident_e)
+                        st.success(f"Animal **{ident_e}** atualizado!")
+                        st.rerun()
+
+            with tab_del:
+                st.warning("A exclusao remove o animal e todo seu historico.")
+                st.caption(f"Este animal tem {n_pes} pesagem(ns) e {n_ocs} ocorrencia(s).")
+                confirma_a = st.checkbox("Confirmo a exclusao permanente deste animal")
+                if confirma_a:
+                    if st.button("Excluir animal definitivamente", type="primary"):
+                        excluir_animal(animal_id)
+                        registrar_auditoria(u["id"], "excluir_animal", "animais", animal_id, det[1] if det else "")
+                        st.success("Animal excluido.")
+                        st.rerun()
+
+# ============================================================
+# EDITAR PESAGENS
+# ============================================================
+elif menu == "Editar Pesagens":
+    hdr("Editar Pesagens", "Corrigir Pesagens", "Edite ou exclua pesagens incorretas")
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+    else:
+        dict_l  = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+        ep1,ep2 = st.columns(2)
+        with ep1: lote_sel = st.selectbox("Lote", list(dict_l.keys()), key="ep_lote")
+        lote_id  = dict_l[lote_sel]
+        animais  = listar_animais_por_lote(lote_id)
+
+        if not animais:
+            st.warning("Nenhum animal neste lote.")
+        else:
+            modo = st.radio("Visualizar", ["Todas do lote","Por animal"], horizontal=True)
+
+            if modo == "Por animal":
+                dict_a = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+                with ep2: anim_sel = st.selectbox("Animal", list(dict_a.keys()), key="ep_anim")
+                pesagens = listar_pesagens(dict_a[anim_sel])
+            else:
+                pesagens_raw = listar_pesagens_lote(lote_id)
+                pesagens     = [(r[0], r[4], r[2], r[3]) for r in pesagens_raw]
+                nomes_map    = {r[4]: r[1] for r in pesagens_raw}
+
+            if not pesagens:
+                st.info("Nenhuma pesagem registrada.")
+            else:
+                # Tabela visual
+                df_ps = pd.DataFrame(pesagens, columns=["ID","Animal ID","Peso (kg)","Data"])
+                if modo == "Todas do lote" and "nomes_map" in dir():
+                    df_ps["Animal"] = df_ps["Animal ID"].map(nomes_map)
+                    df_ps = df_ps[["ID","Animal","Peso (kg)","Data"]]
+                df_ps["Data"] = pd.to_datetime(df_ps["Data"]).dt.strftime("%d/%m/%Y")
+                st.dataframe(df_ps, use_container_width=True)
+
+                st.divider()
+                st.subheader("Selecionar pesagem para editar")
+                dict_pes = {f"ID {p[0]} | {pd.to_datetime(p[3]).strftime('%d/%m/%Y')} | {p[2]:.1f} kg": p[0]
+                            for p in pesagens}
+                pes_sel  = st.selectbox("Pesagem", list(dict_pes.keys()), key="ep_pes")
+                pes_id   = dict_pes[pes_sel]
+                pes_cur  = next((p for p in pesagens if p[0]==pes_id), None)
+
+                tab_edit_p, tab_del_p = st.tabs(["Corrigir", "Excluir"])
+
+                with tab_edit_p:
+                    with st.form("form_edit_pes"):
+                        fe1,fe2 = st.columns(2)
+                        with fe1:
+                            peso_novo = st.number_input("Peso (kg) *", 0.0, 1000.0,
+                                                         value=float(pes_cur[2]) if pes_cur else 0.0,
+                                                         step=0.5)
+                        with fe2:
+                            data_nova = st.date_input("Data",
+                                                       value=pd.to_datetime(pes_cur[3]).date() if pes_cur else date.today())
+                        if st.form_submit_button("Salvar correcao", type="primary", use_container_width=True):
+                            if peso_novo <= 0:       st.error("Peso invalido.")
+                            elif peso_novo > 1000:   st.error("Peso muito alto.")
+                            else:
+                                atualizar_pesagem(pes_id, peso_novo, str(data_nova))
+                                registrar_auditoria(u["id"], "editar_pesagem", "pesagens", pes_id,
+                                                    f"{peso_novo}kg em {data_nova}")
+                                st.success("Pesagem corrigida!")
+                                st.rerun()
+
+                with tab_del_p:
+                    if pes_cur:
+                        st.warning(f"Excluir pesagem de {pes_cur[2]:.1f} kg registrada em {pd.to_datetime(pes_cur[3]).strftime('%d/%m/%Y')}?")
+                    confirma_p = st.checkbox("Confirmo a exclusao desta pesagem")
+                    if confirma_p:
+                        if st.button("Excluir pesagem", type="primary"):
+                            excluir_pesagem(pes_id)
+                            registrar_auditoria(u["id"], "excluir_pesagem", "pesagens", pes_id, "excluido")
+                            st.success("Pesagem excluida.")
+                            st.rerun()
+
+# ============================================================
+# GERENCIAR OCORRENCIAS
+# ============================================================
+elif menu == "Gerenciar Ocorrencias":
+    hdr("Gerenciar Ocorrencias", "Tratamentos e Ocorrencias", "Edite ocorrencias e resolva tratamentos pendentes")
+
+    # ── Painel de alertas de tratamentos vencidos ──────────────────────
+    vencidos = listar_tratamentos_vencidos()
+    if vencidos:
+        st.error(f"ATENCAO: {len(vencidos)} tratamento(s) com prazo vencido!")
+        with st.expander(f"Ver {len(vencidos)} tratamento(s) vencido(s)", expanded=True):
+            for v in vencidos:
+                try:
+                    prev_alta  = pd.to_datetime(v[10]).date()
+                    dias_atraso = (date.today() - prev_alta).days
+                except Exception:
+                    dias_atraso = 0
+                c1,c2,c3,c4 = st.columns([2,2,1,2])
+                c1.write(f"**{v[2]}**")
+                c2.write(f"Lote: {v[3]}")
+                c3.write(f"Tipo: {v[5]}")
+                c4.write(f"Vencido ha {dias_atraso} dia(s)")
+    else:
+        st.success("Nenhum tratamento com prazo vencido.")
+
+    st.divider()
+
+    # ── Selecao ────────────────────────────────────────────────────────
+    lotes = listar_lotes()
+    if not lotes:
+        st.warning("Nenhum lote cadastrado.")
+        st.stop()
+
+    dict_l   = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
+    go1,go2  = st.columns(2)
+    with go1: lote_sel = st.selectbox("Lote", list(dict_l.keys()), key="go_lote")
+    lote_id  = dict_l[lote_sel]
+    animais  = listar_animais_por_lote(lote_id)
+
+    if not animais:
+        st.warning("Nenhum animal neste lote.")
+        st.stop()
+
+    dict_a   = {f"{a[1]} (ID {a[0]})": a[0] for a in animais}
+    with go2: anim_sel = st.selectbox("Animal", list(dict_a.keys()), key="go_anim")
+    animal_id = dict_a[anim_sel]
+    ocs = listar_ocorrencias(animal_id)
+
+    if not ocs:
+        st.info("Nenhuma ocorrencia registrada para este animal.")
+        st.stop()
+
+    # ── Cards de status ────────────────────────────────────────────────
+    st.subheader(f"Ocorrencias de {anim_sel.split(' (ID')[0]}")
+
+    em_trat  = [o for o in ocs if o[8] == "Em tratamento"]
+    resolvidas = [o for o in ocs if o[8] == "Resolvido"]
+
+    r1,r2,r3 = st.columns(3)
+    r1.metric("Total",         len(ocs))
+    r2.metric("Em tratamento", len(em_trat),
+              delta="Atencao" if em_trat else None,
+              delta_color="inverse" if em_trat else "normal")
+    r3.metric("Resolvidas",    len(resolvidas))
+
+    st.divider()
+
+    for oc in ocs:
+        oc_id, _, data_oc, tipo_oc, desc_oc, grav_oc, custo_oc, dias_oc, stat_oc = oc
+        try:
+            prev_alta   = (pd.to_datetime(data_oc) + pd.Timedelta(days=int(dias_oc or 0))).date()
+            dias_rest   = (prev_alta - date.today()).days
+            atraso      = max(0, -dias_rest) if stat_oc == "Em tratamento" else 0
+        except Exception:
+            prev_alta = None; dias_rest = 0; atraso = 0
+
+        if stat_oc == "Resolvido":
+            ic = "Resolvido"
+            st.success(f"{ic} | {data_oc} | {tipo_oc} | Grav: {grav_oc} | {desc_oc[:60]}")
+        elif atraso > 0:
+            ic = f"VENCIDO ha {atraso} dia(s)"
+            st.error(f"{ic} | {data_oc} | {tipo_oc} | Prev. alta: {prev_alta} | {desc_oc[:60]}")
+        else:
+            ic = f"Em tratamento | faltam {dias_rest}d"
+            st.warning(f"{ic} | {data_oc} | {tipo_oc} | Prev. alta: {prev_alta} | {desc_oc[:60]}")
+
+    st.divider()
+    st.subheader("Selecionar ocorrencia para editar")
+
+    dict_oc = {}
+    for oc in ocs:
+        label = f"ID {oc[0]} | {oc[2]} | {oc[3]} | {oc[8]}"
+        dict_oc[label] = oc[0]
+
+    oc_sel  = st.selectbox("Ocorrencia", list(dict_oc.keys()), key="go_oc_sel")
+    oc_id   = dict_oc[oc_sel]
+    oc_cur  = next((o for o in ocs if o[0]==oc_id), None)
+
+    if oc_cur:
+        stat_cur = oc_cur[8]
+        is_resolv = (stat_cur == "Resolvido")
+
+        if is_resolv:
+            st.info("Esta ocorrencia esta resolvida. Voce pode editar os dados mas nao pode reabrir o tratamento.")
+
+        tab_edit_o, tab_del_o = st.tabs(["Editar ocorrencia", "Excluir"])
+
+        with tab_edit_o:
+            with st.form("form_edit_oc"):
+                oe1,oe2,oe3 = st.columns(3)
+                with oe1:
+                    data_oe = st.date_input("Data",    value=pd.to_datetime(oc_cur[2]).date())
+                    tipo_oe = st.selectbox("Tipo",     ["Doenca","Lesao","Medicamento","Outros"],
+                                            index=["Doenca","Lesao","Medicamento","Outros"].index(oc_cur[3])
+                                            if oc_cur[3] in ["Doenca","Lesao","Medicamento","Outros"] else 0)
+                with oe2:
+                    grav_oe  = st.selectbox("Gravidade",["Baixa","Media","Alta"],
+                                             index=["Baixa","Media","Alta"].index(oc_cur[5])
+                                             if oc_cur[5] in ["Baixa","Media","Alta"] else 0)
+                    custo_oe = st.number_input("Custo (R$)", 0.0,
+                                               value=float(oc_cur[6]) if oc_cur[6] else 0.0)
+                with oe3:
+                    dias_oe  = st.number_input("Dias recuperacao", 0,
+                                               value=int(oc_cur[7]) if oc_cur[7] else 0)
+                    if is_resolv:
+                        st.info("Status: Resolvido (imutavel)")
+                        stat_oe = "Resolvido"
+                    else:
+                        stat_oe = st.selectbox("Novo status",
+                                               ["Em tratamento","Resolvido"],
+                                               index=0 if stat_cur=="Em tratamento" else 1)
+                desc_oe   = st.text_area("Descricao", value=oc_cur[4] or "")
+                salvar_oc = st.form_submit_button("Salvar alteracoes", type="primary", use_container_width=True)
+
+            if salvar_oc:
+                atualizar_ocorrencia(oc_id, tipo_oe, desc_oe, grav_oe, custo_oe, dias_oe, stat_oe, str(data_oe))
+                registrar_auditoria(u["id"], "editar_ocorrencia", "ocorrencias", oc_id,
+                                    f"{tipo_oe}/{grav_oe}/{stat_oe}")
+                if stat_oe == "Resolvido" and stat_cur == "Em tratamento":
+                    st.success("Tratamento encerrado! Ocorrencia marcada como Resolvida.")
+                    st.balloons()
+                else:
+                    st.success("Ocorrencia atualizada!")
+                st.rerun()
+
+        with tab_del_o:
+            if stat_cur == "Em tratamento":
+                st.warning("Resolva o tratamento antes de excluir esta ocorrencia.")
+                st.info("Edite o status para 'Resolvido' na aba ao lado e depois exclua se necessario.")
+            else:
+                st.warning("A exclusao e permanente e nao pode ser desfeita.")
+                confirma_oc = st.checkbox("Confirmo a exclusao permanente desta ocorrencia")
+                if confirma_oc:
+                    if st.button("Excluir ocorrencia definitivamente", type="primary"):
+                        excluir_ocorrencia(oc_id)
+                        registrar_auditoria(u["id"], "excluir_ocorrencia", "ocorrencias", oc_id, "excluido")
+                        st.success("Ocorrencia excluida.")
+                        st.rerun()
