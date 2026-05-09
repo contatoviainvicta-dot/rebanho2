@@ -1537,19 +1537,19 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-try:
-    inicializar_banco()
-    # Mostrar qual banco está sendo usado (apenas para diagnóstico)
-    import database as _db_diag
-    if _db_diag._usar_postgres():
-        st.sidebar.success("Banco: PostgreSQL (Supabase)")
-    else:
-        diag = _db_diag._diagnostico_banco()
-        st.sidebar.error(f"SQLite local - dados nao persistem!")
-        st.sidebar.caption(diag)
-except Exception as _e_init:
-    st.error(f"Erro ao inicializar banco: {_e_init}")
-    st.stop()
+# Inicializar banco apenas uma vez por sessao
+if "banco_ok" not in st.session_state:
+    try:
+        inicializar_banco()
+        st.session_state.banco_ok = True
+        import database as _db_diag
+        st.session_state.usando_pg = _db_diag._usar_postgres()
+    except Exception as _e_init:
+        st.error(f"Erro ao inicializar banco: {_e_init}")
+        st.stop()
+
+if not st.session_state.get("usando_pg", False):
+    st.sidebar.error("SQLite local - dados nao persistem!")
 
 # ── helper ──────────────────────────────────────────────────────────────────
 def hdr(icone, titulo, sub=""):
@@ -1557,8 +1557,16 @@ def hdr(icone, titulo, sub=""):
     if sub: st.caption(sub)
     st.divider()
 
+@st.cache_data(ttl=30, show_spinner=False)
+def _listar_lotes_cache():
+    return listar_lotes()
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _listar_animais_cache(lote_id):
+    return listar_animais_por_lote(lote_id)
+
 def sel_lote(key="lote"):
-    lotes = listar_lotes()
+    lotes = _listar_lotes_cache()
     if not lotes:
         st.warning("Nenhum lote cadastrado. Va em Cadastrar Lote primeiro.")
         return None, None
@@ -1567,7 +1575,7 @@ def sel_lote(key="lote"):
     return d[sel], lotes
 
 def sel_animal(lote_id, key="animal"):
-    animais = listar_animais_por_lote(lote_id)
+    animais = _listar_animais_cache(lote_id)
     if not animais:
         st.warning("Nenhum animal neste lote.")
         return None
@@ -1621,7 +1629,10 @@ with st.sidebar:
         st.session_state.usuario = None
         st.rerun()
 
-    sp = obter_status_plano(u["id"])
+    @st.cache_data(ttl=300, show_spinner=False)
+    def _plano_usuario(uid):
+        return obter_status_plano(uid)
+    sp = _plano_usuario(u["id"])
     if sp["plano"] == "trial":
         dr = sp["dias_restantes"]
         if dr <= 3:   st.error(f"Trial: {dr} dia(s) restante(s)!")
@@ -1632,14 +1643,22 @@ with st.sidebar:
     else:
         st.success("Plano ativo")
 
-    # Tratamentos vencidos
-    _trat_venc = listar_tratamentos_vencidos()
+    # Alertas sidebar com cache de 3 minutos
+    @st.cache_data(ttl=180, show_spinner=False)
+    def _alertas_sidebar():
+        return dict(
+            trat_venc = listar_tratamentos_vencidos(),
+            pend      = listar_vacinas_pendentes(),
+            crit      = listar_medicamentos_criticos(),
+            parto     = listar_partos_previstos(),
+        )
+    _al = _alertas_sidebar()
+    _trat_venc = _al['trat_venc']
+    pend  = _al['pend']
+    crit  = _al['crit']
+    parto = _al['parto']
     if _trat_venc:
-        st.sidebar.error(f"{len(_trat_venc)} trat. pendente(s) de resolucao!")
-
-    pend  = listar_vacinas_pendentes()
-    crit  = listar_medicamentos_criticos()
-    parto = listar_partos_previstos()
+        st.sidebar.error(f"{len(_trat_venc)} trat. pendente(s)!")
     alertas = []
     if pend:  alertas.append(f"Vacinas: {len(pend)}")
     if crit:  alertas.append(f"Meds: {len(crit)}")
@@ -2141,8 +2160,17 @@ elif menu == "Dashboard Sanitario":
     escolha = st.selectbox("Filtrar por lote", opcoes)
     animais = listar_animais() if escolha == "Todos os lotes" else listar_animais_por_lote(dict_l[escolha])
 
-    todas_oc = []
-    for a in animais: todas_oc.extend(listar_ocorrencias(a[0]))
+    # Query agregada em vez de N+1
+    if escolha == "Todos os lotes":
+        import database as _dbl
+        todas_oc = []
+        for l in listar_lotes():
+            todas_oc.extend(listar_ocorrencias_todos_animais(l[0]))
+    else:
+        lote_id_san = dict_l.get(escolha)
+        todas_oc = list(listar_ocorrencias_todos_animais(lote_id_san)) if lote_id_san else []
+        # Ajustar indices para compatibilidade (sem coluna extra "identificacao")
+        todas_oc = [r[:9] for r in todas_oc]
 
     df_oc = pd.DataFrame(todas_oc, columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"]) if todas_oc else pd.DataFrame(columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"])
 
@@ -2215,7 +2243,11 @@ elif menu == "Analisar por Lote":
         custo_diar = st.number_input("Custo diario por animal (R$)", 0.0, 100.0, 10.0)
         preco_kg   = st.number_input("Preco do kg (R$)", 0.0, 50.0, 10.0)
 
-        datas = [p[3] for a in animais for p in listar_pesagens(a[0])]
+        # Queries agregadas - sem N+1
+        pes_lote = listar_pesagens_todos_animais(lote_id)
+        ocs_lote = listar_ocorrencias_todos_animais(lote_id)
+
+        datas = [p[3] for p in pes_lote]
         dias_lote = 0
         if len(datas) > 1:
             dts = pd.to_datetime(datas)
@@ -2223,22 +2255,19 @@ elif menu == "Analisar por Lote":
 
         custo_op = custo_diar * len(animais) * dias_lote
         ganho_t  = 0
-        custo_san = 0
-        gmds = []
-        for a in animais:
-            ps = listar_pesagens(a[0])
-            if len(ps) > 1:
-                df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
-                df["data"] = pd.to_datetime(df["data"])
-                df = df.sort_values("data")
-                g  = df["peso"].iloc[-1] - df["peso"].iloc[0]
-                d  = (df["data"].iloc[-1]-df["data"].iloc[0]).days
+        custo_san = sum(r[6] for r in ocs_lote if r[6])
+        gmds = list(calcular_gmds_lote(lote_id).values())
+        gmds = [g for g in gmds if 0 <= g <= 2]
+
+        # Calcular ganho total
+        pes_por_animal = {}
+        for p in pes_lote:
+            pes_por_animal.setdefault(p[1], []).append(p)
+        for aid, ps in pes_por_animal.items():
+            if len(ps) >= 2:
+                ps_sorted = sorted(ps, key=lambda x: x[3])
+                g = ps_sorted[-1][2] - ps_sorted[0][2]
                 if g > 0: ganho_t += g
-                if d > 0:
-                    gmd = g/d
-                    if 0 <= gmd <= 2: gmds.append(gmd)
-            for oc in listar_ocorrencias(a[0]):
-                if oc[6]: custo_san += oc[6]
 
         receita = ganho_t * preco_kg
         lucro   = receita - custo_op - custo_san
@@ -2259,16 +2288,12 @@ elif menu == "Analisar por Lote":
         st.metric("Lucro por animal", f"R$ {lucro_anim:,.2f}")
 
         # Ranking GMD
+        # Usar gmds calculados em batch
+        gmds_rank = calcular_gmds_lote(lote_id)
         ranking = []
         for a in animais:
-            ps = listar_pesagens(a[0])
-            if len(ps) > 1:
-                df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
-                df["data"] = pd.to_datetime(df["data"])
-                df = df.sort_values("data")
-                d  = (df["data"].iloc[-1]-df["data"].iloc[0]).days
-                if d > 0:
-                    gmd = (df["peso"].iloc[-1]-df["peso"].iloc[0])/d
+            gmd = gmds_rank.get(a[0])
+            if gmd is not None:
                     if 0 <= gmd <= 2: ranking.append((a[1], gmd))
         if ranking:
             ranking.sort(key=lambda x: x[1], reverse=True)
@@ -2434,21 +2459,22 @@ elif menu == "Comparativo Lotes":
                 anim  = listar_animais_por_lote(lid)
                 tm    = taxa_mortalidade_lote(lid)
                 tp    = taxa_prenhez_lote(lid)
-                gmds, ganho, dias_t, custo_s = [], 0, 0, 0
-                for a in anim:
-                    ps = listar_pesagens(a[0])
-                    if len(ps) >= 2:
-                        df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
-                        df["data"] = pd.to_datetime(df["data"])
-                        df = df.sort_values("data")
-                        d  = (df["data"].iloc[-1]-df["data"].iloc[0]).days
-                        g  = df["peso"].iloc[-1]-df["peso"].iloc[0]
-                        if d > 0:
-                            gv = g/d
-                            if 0 < gv <= 2: gmds.append(gv)
+                # Queries agregadas
+                gmds_comp = list(calcular_gmds_lote(lid).values())
+                gmds = [g for g in gmds_comp if 0 < g <= 2]
+                ocs_comp = listar_ocorrencias_todos_animais(lid)
+                custo_s = sum(r[6] for r in ocs_comp if r[6])
+                pes_comp = listar_pesagens_todos_animais(lid)
+                ganho, dias_t = 0, 0
+                pes_por_a = {}
+                for p in pes_comp:
+                    pes_por_a.setdefault(p[1],[]).append(p)
+                for ps_a in pes_por_a.values():
+                    if len(ps_a) >= 2:
+                        ps_a_s = sorted(ps_a, key=lambda x: x[3])
+                        g = ps_a_s[-1][2]-ps_a_s[0][2]
+                        d = (pd.to_datetime(ps_a_s[-1][3])-pd.to_datetime(ps_a_s[0][3])).days
                         ganho += g; dias_t += d
-                    for oc in listar_ocorrencias(a[0]):
-                        if oc[6]: custo_s += oc[6]
                 gmd_m  = sum(gmds)/len(gmds) if gmds else 0
                 receita = ganho * pk
                 custo_op = cd * len(anim) * (dias_t/max(len(anim),1))
@@ -2562,9 +2588,14 @@ elif menu == "Pesquisar Ocorrencias":
     with f1: escolha_l = st.selectbox("Lote", ["Todos"]+list(dict_l.keys()))
     with f2: tipo_f    = st.selectbox("Tipo", ["Todos","Doenca","Lesao","Medicamento","Outros"])
     with f3: grav_f    = st.selectbox("Gravidade", ["Todas","Baixa","Media","Alta"])
-    animais = listar_animais() if escolha_l=="Todos" else listar_animais_por_lote(dict_l[escolha_l])
-    todas_oc = []
-    for a in animais: todas_oc.extend(listar_ocorrencias(a[0]))
+    if escolha_l == "Todos":
+        todas_oc_raw = []
+        for l in listar_lotes():
+            todas_oc_raw.extend(listar_ocorrencias_todos_animais(l[0]))
+    else:
+        todas_oc_raw = listar_ocorrencias_todos_animais(dict_l[escolha_l])
+    # Converter para formato compativel (sem coluna ident)
+    todas_oc = [list(r[:9]) for r in todas_oc_raw]
     df_oc = pd.DataFrame(todas_oc, columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"]) if todas_oc else pd.DataFrame(columns=["id","animal_id","data","tipo","descricao","gravidade","custo","dias_rec","status"])
     if len(df_oc)>0:
         if tipo_f!="Todos":  df_oc = df_oc[df_oc["tipo"]==tipo_f]
@@ -2860,6 +2891,17 @@ elif menu == "Previsao Abate":
 elif menu == "Prontuario Animal":
     hdr("Prontuario Animal", "Prontuario Completo", "Historico de peso, saude e reproducao")
 
+    @st.cache_data(ttl=60, show_spinner="Carregando prontuario...")
+    def _dados_prontuario(animal_id):
+        return dict(
+            pesagens    = listar_pesagens(animal_id),
+            ocorrencias = listar_ocorrencias(animal_id),
+            reproducao  = listar_reproducao(animal_id),
+            score       = calcular_score_saude(animal_id),
+            carencia    = verificar_carencia(animal_id),
+            previsao    = calcular_previsao_abate(animal_id),
+        )
+
     # ── funcao de timeline ────────────────────────────────────────────────
     def montar_timeline(animal_id, det):
         _pd2 = pd
@@ -3050,6 +3092,9 @@ elif menu == "Prontuario Animal":
                        delta_color="inverse" if car["em_carencia"] else "normal")
 
             st.divider()
+
+            # Carregar todos os dados de uma vez (cacheado)
+            _dados_p = _dados_prontuario(animal_id)
 
             t1,t2,t3,t4 = st.tabs(["Timeline","Dados","Pesagens","Ocorrencias"])
 
@@ -4205,13 +4250,10 @@ elif menu == "Workspace do Lote":
 
         with c1_s:
             st.subheader("Ocorrencias")
-            todas_ocs = []
-            for a_s in animais_ws:
-                for oc_s in listar_ocorrencias(a_s[0]):
-                    todas_ocs.append({
-                        "Animal": a_s[1], "Data": oc_s[2], "Tipo": oc_s[3],
-                        "Gravidade": oc_s[5], "Custo": oc_s[6], "Status": oc_s[8]
-                    })
+            todas_ocs_raw = _ws['todas_ocs']
+            todas_ocs = [{"Animal": r[9], "Data": r[2], "Tipo": r[3],
+                          "Gravidade": r[5], "Custo": r[6], "Status": r[8]}
+                         for r in todas_ocs_raw]
             if todas_ocs:
                 df_oc_ws = pd.DataFrame(todas_ocs)
                 # Contagem por tipo
@@ -4226,7 +4268,7 @@ elif menu == "Workspace do Lote":
 
         with c2_s:
             st.subheader("Vacinas")
-            vacs_ws = listar_vacinas_agenda(lote_ws_id)
+            vacs_ws = _ws['vacs']
             pendentes_ws = [v for v in vacs_ws if v[5]=='pendente']
             realizadas_ws = [v for v in vacs_ws if v[5]=='realizado']
             st.metric("Pendentes", len(pendentes_ws))
@@ -4273,7 +4315,7 @@ elif menu == "Workspace do Lote":
 
         with col_f2:
             st.subheader("Venda e margem")
-            vendas_ws = listar_vendas_lote(lote_ws_id)
+            vendas_ws = _ws['vendas']
             if vendas_ws:
                 v = vendas_ws[0]
                 receita = v[3] * v[4]
