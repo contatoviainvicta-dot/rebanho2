@@ -1342,11 +1342,96 @@ _DB_B64 = (
     'aWYgbm90IGluc2lnaHRzOgogICAgICAgIGluc2lnaHRzLmFwcGVuZChkaWN0KHRpcG89J3Bvc2l0'
     'aXZvJywgdGl0dWxvPSdMb3RlIHNhdWRhdmVsJywKICAgICAgICAgICAgZGVzY3JpY2FvPSdOZW5o'
     'dW0gYWxlcnRhIGlkZW50aWZpY2Fkby4gQ29udGludWUgbW9uaXRvcmFuZG8uJywKICAgICAgICAg'
-    'ICAgYWNhbz1Ob25lKSkKCiAgICByZXR1cm4gaW5zaWdodHMKCgpkZWYgc2luY3Jvbml6YXJfdG9k'
-    'b3NfbG90ZXMoKToKICAgIGxvdGVzID0gbGlzdGFyX2xvdGVzKCkKICAgIHJlc3VsdGFkb3MgPSBb'
-    'XQogICAgZm9yIGwgaW4gbG90ZXM6CiAgICAgICAgbiA9IGF0dWFsaXphcl9xdGRfbG90ZShsWzBd'
-    'KQogICAgICAgIHJlc3VsdGFkb3MuYXBwZW5kKChsWzBdLCBsWzFdLCBuKSkKICAgIHJldHVybiBy'
-    'ZXN1bHRhZG9zCg=='
+    'ICAgYWNhbz1Ob25lKSkKCiAgICByZXR1cm4gaW5zaWdodHMKCgojIOKUgOKUgCBRVUVSSUVTIEFH'
+    'UkVHQURBUyAoZWxpbWluYSBOKzEpIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKU'
+    'gOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKU'
+    'gOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAoKZGVmIGxpc3Rhcl9wZXNhZ2Vuc190b2Rv'
+    'c19hbmltYWlzKGxvdGVfaWQpOgogICAgIyBVbWEgdW5pY2EgcXVlcnkgcmV0b3JuYSB0b2RhcyBh'
+    'cyBwZXNhZ2VucyBkZSB0b2RvcyBvcyBhbmltYWlzIGRvIGxvdGUKICAgIHAgPSBfcGgoKQogICAg'
+    'd2l0aCBfY29uZXhhbygpIGFzIGNvbm46CiAgICAgICAgY3VyID0gY29ubi5jdXJzb3IoKQogICAg'
+    'ICAgIGN1ci5leGVjdXRlKAogICAgICAgICAgICBmIlNFTEVDVCBwLmlkLHAuYW5pbWFsX2lkLHAu'
+    'cGVzbyxwLmRhdGEsYS5pZGVudGlmaWNhY2FvIgogICAgICAgICAgICBmIiBGUk9NIHBlc2FnZW5z'
+    'IHAgSk9JTiBhbmltYWlzIGEgT04gYS5pZD1wLmFuaW1hbF9pZCIKICAgICAgICAgICAgZiIgV0hF'
+    'UkUgYS5sb3RlX2lkPXtwfSBBTkQgQ09BTEVTQ0UoYS5hdGl2bywxKT0xIgogICAgICAgICAgICBm'
+    'IiBPUkRFUiBCWSBwLmFuaW1hbF9pZCxwLmRhdGEgQVNDIiwKICAgICAgICAgICAgKGxvdGVfaWQs'
+    'KSwKICAgICAgICApCiAgICAgICAgcm93cyA9IF9mZXRjaChjdXIpCiAgICAgICAgcmV0dXJuIFso'
+    'clsnaWQnXSxyWydhbmltYWxfaWQnXSxyWydwZXNvJ10sclsnZGF0YSddLHJbJ2lkZW50aWZpY2Fj'
+    'YW8nXSkgZm9yIHIgaW4gcm93c10KCmRlZiBsaXN0YXJfb2NvcnJlbmNpYXNfdG9kb3NfYW5pbWFp'
+    'cyhsb3RlX2lkKToKICAgICMgVW1hIHVuaWNhIHF1ZXJ5IHJldG9ybmEgdG9kYXMgYXMgb2NvcnJl'
+    'bmNpYXMgZGUgdG9kb3Mgb3MgYW5pbWFpcyBkbyBsb3RlCiAgICBwID0gX3BoKCkKICAgIHdpdGgg'
+    'X2NvbmV4YW8oKSBhcyBjb25uOgogICAgICAgIGN1ciA9IGNvbm4uY3Vyc29yKCkKICAgICAgICBj'
+    'dXIuZXhlY3V0ZSgKICAgICAgICAgICAgZiJTRUxFQ1Qgby5pZCxvLmFuaW1hbF9pZCxvLmRhdGEs'
+    'by50aXBvLG8uZGVzY3JpY2FvLCIKICAgICAgICAgICAgZiJvLmdyYXZpZGFkZSxvLmN1c3RvLG8u'
+    'ZGlhc19yZWN1cGVyYWNhbyxvLnN0YXR1cyxhLmlkZW50aWZpY2FjYW8iCiAgICAgICAgICAgIGYi'
+    'IEZST00gb2NvcnJlbmNpYXMgbyBKT0lOIGFuaW1haXMgYSBPTiBhLmlkPW8uYW5pbWFsX2lkIgog'
+    'ICAgICAgICAgICBmIiBXSEVSRSBhLmxvdGVfaWQ9e3B9IgogICAgICAgICAgICBmIiBPUkRFUiBC'
+    'WSBvLmFuaW1hbF9pZCxvLmRhdGEgQVNDIiwKICAgICAgICAgICAgKGxvdGVfaWQsKSwKICAgICAg'
+    'ICApCiAgICAgICAgcm93cyA9IF9mZXRjaChjdXIpCiAgICAgICAgcmV0dXJuIFsoclsnaWQnXSxy'
+    'WydhbmltYWxfaWQnXSxyWydkYXRhJ10sclsndGlwbyddLHJbJ2Rlc2NyaWNhbyddLAogICAgICAg'
+    'ICAgICAgICAgIHJbJ2dyYXZpZGFkZSddLHJbJ2N1c3RvJ10sclsnZGlhc19yZWN1cGVyYWNhbydd'
+    'LHJbJ3N0YXR1cyddLHJbJ2lkZW50aWZpY2FjYW8nXSkgZm9yIHIgaW4gcm93c10KCmRlZiBjYWxj'
+    'dWxhcl9nbWRzX2xvdGUobG90ZV9pZCk6CiAgICAjIENhbGN1bGEgR01EIGRlIHRvZG9zIG9zIGFu'
+    'aW1haXMgZG8gbG90ZSBjb20gdW1hIHVuaWNhIHF1ZXJ5CiAgICBpbXBvcnQgcGFuZGFzIGFzIHBk'
+    'CiAgICByb3dzID0gbGlzdGFyX3Blc2FnZW5zX3RvZG9zX2FuaW1haXMobG90ZV9pZCkKICAgIGlm'
+    'IG5vdCByb3dzOgogICAgICAgIHJldHVybiB7fQogICAgZGYgPSBwZC5EYXRhRnJhbWUocm93cywg'
+    'Y29sdW1ucz1bJ2lkJywnYW5pbWFsX2lkJywncGVzbycsJ2RhdGEnLCdpZGVudCddKQogICAgZGZb'
+    'J2RhdGEnXSA9IHBkLnRvX2RhdGV0aW1lKGRmWydkYXRhJ10pCiAgICByZXN1bHRhZG8gPSB7fQog'
+    'ICAgZm9yIGFpZCwgZ3JwIGluIGRmLmdyb3VwYnkoJ2FuaW1hbF9pZCcpOgogICAgICAgIGdycCA9'
+    'IGdycC5zb3J0X3ZhbHVlcygnZGF0YScpCiAgICAgICAgaWYgbGVuKGdycCkgPj0gMjoKICAgICAg'
+    'ICAgICAgZGlhcyA9IChncnBbJ2RhdGEnXS5pbG9jWy0xXSAtIGdycFsnZGF0YSddLmlsb2NbMF0p'
+    'LmRheXMKICAgICAgICAgICAgaWYgZGlhcyA+IDA6CiAgICAgICAgICAgICAgICBnbWQgPSAoZ3Jw'
+    'WydwZXNvJ10uaWxvY1stMV0gLSBncnBbJ3Blc28nXS5pbG9jWzBdKSAvIGRpYXMKICAgICAgICAg'
+    'ICAgICAgIHJlc3VsdGFkb1thaWRdID0gcm91bmQoZ21kLCA0KQogICAgcmV0dXJuIHJlc3VsdGFk'
+    'bwoKZGVmIHJlc3Vtb19kYXNoYm9hcmQoKToKICAgICMgVW1hIHVuaWNhIHF1ZXJ5IHBhcmEgb3Mg'
+    'S1BJcyBkbyBIb21lCiAgICB3aXRoIF9jb25leGFvKCkgYXMgY29ubjoKICAgICAgICBjdXIgPSBj'
+    'b25uLmN1cnNvcigpCiAgICAgICAgY3VyLmV4ZWN1dGUoIlNFTEVDVCBDT1VOVCgqKSBGUk9NIGxv'
+    'dGVzIikKICAgICAgICBuX2xvdGVzID0gY3VyLmZldGNob25lKClbMF0KICAgICAgICBjdXIuZXhl'
+    'Y3V0ZSgiU0VMRUNUIENPVU5UKCopIEZST00gYW5pbWFpcyBXSEVSRSBDT0FMRVNDRShhdGl2bywx'
+    'KT0xIikKICAgICAgICBuX2FuaW1haXMgPSBjdXIuZmV0Y2hvbmUoKVswXQogICAgICAgIGN1ci5l'
+    'eGVjdXRlKCJTRUxFQ1QgQ09VTlQoKikgRlJPTSBtb3J0YWxpZGFkZSIpCiAgICAgICAgbl9tb3J0'
+    'ZXMgPSBjdXIuZmV0Y2hvbmUoKVswXQogICAgICAgIGN1ci5leGVjdXRlKAogICAgICAgICAgICAi'
+    'U0VMRUNUIENPVU5UKCopIEZST00gdmFjaW5hc19hZ2VuZGEgdiIKICAgICAgICAgICAgIiBXSEVS'
+    'RSB2LnN0YXR1cz0ncGVuZGVudGUnIgogICAgICAgICkKICAgICAgICBuX3ZhYyA9IGN1ci5mZXRj'
+    'aG9uZSgpWzBdCiAgICAgICAgY3VyLmV4ZWN1dGUoCiAgICAgICAgICAgICJTRUxFQ1QgQ09VTlQo'
+    'KikgRlJPTSBtZWRpY2FtZW50b3MiCiAgICAgICAgICAgICIgV0hFUkUgZXN0b3F1ZV9hdHVhbDw9'
+    'ZXN0b3F1ZV9taW5pbW8iCiAgICAgICAgKQogICAgICAgIG5fbWVkcyA9IGN1ci5mZXRjaG9uZSgp'
+    'WzBdCiAgICByZXR1cm4gZGljdChsb3Rlcz1uX2xvdGVzLCBhbmltYWlzPW5fYW5pbWFpcywgbW9y'
+    'dGVzPW5fbW9ydGVzLAogICAgICAgICAgICAgICAgdmFjaW5hc19wZW5kZW50ZXM9bl92YWMsIG1l'
+    'ZHNfY3JpdGljb3M9bl9tZWRzKQoKZGVmIGNhbGN1bGFyX3Njb3Jlc19sb3RlKGxvdGVfaWQpOgog'
+    'ICAgIyBDYWxjdWxhIHNjb3JlIGRlIHRvZG9zIG9zIGFuaW1haXMgZG8gbG90ZSBkZSBmb3JtYSBh'
+    'Z3JlZ2FkYQogICAgaW1wb3J0IHBhbmRhcyBhcyBwZAogICAgYW5pbWFpcyA9IGxpc3Rhcl9hbmlt'
+    'YWlzX3Bvcl9sb3RlKGxvdGVfaWQpCiAgICBpZiBub3QgYW5pbWFpczoKICAgICAgICByZXR1cm4g'
+    'e30KCiAgICBwZXNhZ2VucyA9IGxpc3Rhcl9wZXNhZ2Vuc190b2Rvc19hbmltYWlzKGxvdGVfaWQp'
+    'CiAgICBvY29ycmVuY2lhcyA9IGxpc3Rhcl9vY29ycmVuY2lhc190b2Rvc19hbmltYWlzKGxvdGVf'
+    'aWQpCgogICAgIyBBZ3J1cGFyIHBvciBhbmltYWxfaWQKICAgIHBlc19wb3JfYW5pbWFsID0ge30K'
+    'ICAgIGZvciByb3cgaW4gcGVzYWdlbnM6CiAgICAgICAgYWlkID0gcm93WzFdCiAgICAgICAgcGVz'
+    'X3Bvcl9hbmltYWwuc2V0ZGVmYXVsdChhaWQsIFtdKS5hcHBlbmQocm93KQoKICAgIG9jX3Bvcl9h'
+    'bmltYWwgPSB7fQogICAgZm9yIHJvdyBpbiBvY29ycmVuY2lhczoKICAgICAgICBhaWQgPSByb3db'
+    'MV0KICAgICAgICBvY19wb3JfYW5pbWFsLnNldGRlZmF1bHQoYWlkLCBbXSkuYXBwZW5kKHJvdykK'
+    'CiAgICBzY29yZXMgPSB7fQogICAgZm9yIGEgaW4gYW5pbWFpczoKICAgICAgICBhaWQgPSBhWzBd'
+    'CiAgICAgICAgcHMgPSBwZXNfcG9yX2FuaW1hbC5nZXQoYWlkLCBbXSkKICAgICAgICBvY3MgPSBv'
+    'Y19wb3JfYW5pbWFsLmdldChhaWQsIFtdKQoKICAgICAgICAjIEdNRAogICAgICAgIGdtZCA9IDAu'
+    'MAogICAgICAgIGlmIGxlbihwcykgPj0gMjoKICAgICAgICAgICAgZGYgPSBwZC5EYXRhRnJhbWUo'
+    'cHMsIGNvbHVtbnM9WydpZCcsJ2FpZCcsJ3Blc28nLCdkYXRhJywnaWRlbnQnXSkKICAgICAgICAg'
+    'ICAgZGZbJ2RhdGEnXSA9IHBkLnRvX2RhdGV0aW1lKGRmWydkYXRhJ10pCiAgICAgICAgICAgIGRm'
+    'ID0gZGYuc29ydF92YWx1ZXMoJ2RhdGEnKQogICAgICAgICAgICBkaWFzID0gKGRmWydkYXRhJ10u'
+    'aWxvY1stMV0gLSBkZlsnZGF0YSddLmlsb2NbMF0pLmRheXMKICAgICAgICAgICAgaWYgZGlhcyA+'
+    'IDA6CiAgICAgICAgICAgICAgICBnbWQgPSAoZGZbJ3Blc28nXS5pbG9jWy0xXSAtIGRmWydwZXNv'
+    'J10uaWxvY1swXSkgLyBkaWFzCgogICAgICAgIHB0c19nbWQgPSAoNTAgaWYgZ21kPj0xLjIgZWxz'
+    'ZSA0NSBpZiBnbWQ+PTEuMCBlbHNlIDM4IGlmIGdtZD49MC44CiAgICAgICAgICAgICAgICAgICBl'
+    'bHNlIDMwIGlmIGdtZD49MC42IGVsc2UgMjAgaWYgZ21kPj0wLjQgZWxzZSAxMCBpZiBnbWQ+PTAg'
+    'ZWxzZSAwKQogICAgICAgIHBlbiA9IG1pbigzNSwgc3VtKDE1IGlmIG9bNV09PSdBbHRhJyBlbHNl'
+    'IDcgaWYgb1s1XT09J01lZGlhJyBlbHNlIDMgZm9yIG8gaW4gb2NzKSkKICAgICAgICBwdHNfb2Mg'
+    'PSBtYXgoMCwgMzUgLSBwZW4pCiAgICAgICAgc2NvcmUgPSBwdHNfZ21kICsgcHRzX29jICsgMTUK'
+    'ICAgICAgICBjbGFzc2lmID0gKCJFeGNlbGVudGUiIGlmIHNjb3JlPj04MCBlbHNlICJCb20iIGlm'
+    'IHNjb3JlPj02MAogICAgICAgICAgICAgICAgICAgZWxzZSAiUmVndWxhciIgaWYgc2NvcmU+PTQw'
+    'IGVsc2UgIkNyaXRpY28iKQogICAgICAgIHNjb3Jlc1thaWRdID0gZGljdChzY29yZT1zY29yZSwg'
+    'Y2xhc3NpZmljYWNhbz1jbGFzc2lmLCBnbWQ9cm91bmQoZ21kLDMpLAogICAgICAgICAgICAgICAg'
+    'ICAgICAgICAgICBuX29jb3JyZW5jaWFzPWxlbihvY3MpKQogICAgcmV0dXJuIHNjb3JlcwoKCmRl'
+    'ZiBzaW5jcm9uaXphcl90b2Rvc19sb3RlcygpOgogICAgbG90ZXMgPSBsaXN0YXJfbG90ZXMoKQog'
+    'ICAgcmVzdWx0YWRvcyA9IFtdCiAgICBmb3IgbCBpbiBsb3RlczoKICAgICAgICBuID0gYXR1YWxp'
+    'emFyX3F0ZF9sb3RlKGxbMF0pCiAgICAgICAgcmVzdWx0YWRvcy5hcHBlbmQoKGxbMF0sIGxbMV0s'
+    'IG4pKQogICAgcmV0dXJuIHJlc3VsdGFkb3MK'
 )
 _db_bytes = __import__('base64').b64decode(''.join(_DB_B64))
 with open('database.py', 'wb') as _f:
@@ -1642,14 +1727,21 @@ if menu == "Inicio":
     st.caption(datetime.now().strftime("%d/%m/%Y %H:%M"))
     st.divider()
 
-    lotes         = listar_lotes()
-    animais_todos = listar_animais()
+    @st.cache_data(ttl=60, show_spinner=False)
+    def _dash_home():
+        return resumo_dashboard(), listar_lotes()
+
+    _dash, lotes = _dash_home()
 
     k1,k2,k3,k4,k5 = st.columns(5)
-    k1.metric("Lotes",          len(lotes))
-    k2.metric("Animais ativos", len(animais_todos))
-    k3.metric("Vacinas pend.",  len(pend),  delta="atencao" if pend  else None, delta_color="inverse" if pend  else "normal")
-    k4.metric("Meds. criticos", len(crit),  delta="atencao" if crit  else None, delta_color="inverse" if crit  else "normal")
+    k1.metric("Lotes",          _dash['lotes'])
+    k2.metric("Animais ativos", _dash['animais'])
+    k3.metric("Vacinas pend.",  _dash['vacinas_pendentes'],
+              delta="atencao" if _dash['vacinas_pendentes'] else None,
+              delta_color="inverse" if _dash['vacinas_pendentes'] else "normal")
+    k4.metric("Meds. criticos", _dash['meds_criticos'],
+              delta="atencao" if _dash['meds_criticos'] else None,
+              delta_color="inverse" if _dash['meds_criticos'] else "normal")
     k5.metric("Partos 30d",     len(parto))
 
     st.divider()
@@ -1693,8 +1785,13 @@ if menu == "Inicio":
     else:
         ncols = min(3, len(lotes))
         cols  = st.columns(ncols)
+        @st.cache_data(ttl=60, show_spinner=False)
+        def _rs_lotes(ids):
+            return {lid: resumo_lote(lid) for lid in ids}
+        _rs_map = _rs_lotes(tuple(l[0] for l in lotes[:6]))
+
         for i, l in enumerate(lotes[:6]):
-            rs   = resumo_lote(l[0])
+            rs   = _rs_map.get(l[0], {})
             ico  = "verde" if rs["ativos"] > 0 else "cinza"
             tags = []
             if rs["mortos"]:           tags.append(f"Mortes: {rs['mortos']}")
@@ -2270,12 +2367,14 @@ elif menu == "Score de Saude":
         if not animais:
             st.warning("Nenhum animal.")
         else:
+            # Calcular todos os scores em batch (sem N+1 queries)
+            scores_batch = calcular_scores_lote(lote_id)
             scores = []
             for a in animais:
-                sc  = calcular_score_saude(a[0])
+                sc  = scores_batch.get(a[0], dict(score=65, classificacao="Regular", gmd=0.0, n_ocorrencias=0))
                 car = verificar_carencia(a[0])
                 scores.append({"Animal": a[1], "Score": sc["score"], "Classificacao": sc["classificacao"],
-                               "GMD": sc["detalhes"]["gmd"], "Ocorrencias": sc["detalhes"]["n_ocorrencias"],
+                               "GMD": sc["gmd"], "Ocorrencias": sc["n_ocorrencias"],
                                "Em Carencia": "Sim" if car["em_carencia"] else "Nao"})
             df_sc = pd.DataFrame(scores).sort_values("Score", ascending=False)
             st.dataframe(df_sc, use_container_width=True)
@@ -3962,19 +4061,10 @@ elif menu == "Workspace do Lote":
     animais_ws = listar_animais_por_lote(lote_ws_id)
     mort_ws = taxa_mortalidade_lote(lote_ws_id)
 
-    gmds_ws = []
-    for a_ws in animais_ws:
-        ps_ws = listar_pesagens(a_ws[0])
-        if len(ps_ws) >= 2:
-            df_ws = pd.DataFrame(ps_ws, columns=['id','aid','peso','data'])
-            df_ws['data'] = pd.to_datetime(df_ws['data'])
-            df_ws = df_ws.sort_values('data')
-            dias_ws = (df_ws['data'].iloc[-1] - df_ws['data'].iloc[0]).days
-            if dias_ws > 0:
-                g_ws = (df_ws['peso'].iloc[-1] - df_ws['peso'].iloc[0]) / dias_ws
-                if g_ws >= 0: gmds_ws.append(g_ws)
-
-    gmd_ws = sum(gmds_ws)/len(gmds_ws) if gmds_ws else 0
+    # GMDs em batch - uma unica query
+    gmds_ws_map = calcular_gmds_lote(lote_ws_id)
+    gmds_ws = [g for g in gmds_ws_map.values() if g >= 0]
+    gmd_ws  = sum(gmds_ws)/len(gmds_ws) if gmds_ws else 0
 
     card_kpi_row([
         dict(titulo="Animais Ativos",    valor=rs_ws['ativos'],
@@ -4061,23 +4151,19 @@ elif menu == "Workspace do Lote":
         st.caption(f"{len(lista_anim_ws)} animal(is) encontrado(s)")
         st.write("")
 
+        # Carregar dados em batch (sem N+1 queries)
+        scores_ws_map = calcular_scores_lote(lote_ws_id)
+        ocs_ws_map = {}
+        for oc_row in listar_ocorrencias_todos_animais(lote_ws_id):
+            ocs_ws_map.setdefault(oc_row[1], []).append(oc_row)
+
         cards_html = ""
         for a_row in lista_anim_ws:
             aid_r, ident_r = a_row[0], a_row[1]
             status_r = a_row[4] if len(a_row) > 4 else 'ATIVO'
-            ps_r = listar_pesagens(aid_r)
-            sc_r = calcular_score_saude(aid_r)
-            n_oc = len(listar_ocorrencias(aid_r))
-
-            gmd_r = None
-            if len(ps_r) >= 2:
-                df_r = pd.DataFrame(ps_r, columns=['id','aid','peso','data'])
-                df_r['data'] = pd.to_datetime(df_r['data'])
-                df_r = df_r.sort_values('data')
-                dias_r = (df_r['data'].iloc[-1] - df_r['data'].iloc[0]).days
-                if dias_r > 0:
-                    gmd_r = (df_r['peso'].iloc[-1] - df_r['peso'].iloc[0]) / dias_r
-
+            sc_r  = scores_ws_map.get(aid_r, dict(score=65, gmd=0.0))
+            n_oc  = len(ocs_ws_map.get(aid_r, []))
+            gmd_r = sc_r.get('gmd', 0.0) if sc_r.get('gmd', 0.0) > 0 else None
             cards_html += card_animal(ident_r, status_r, gmd_r, sc_r['score'], n_oc)
 
         if cards_html:
