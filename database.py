@@ -1,22 +1,36 @@
-‘’’
-database.py – Camada de persistência do Sistema de Gestão Pecuária.
+# database.py – Camada de persistência do Sistema de Gestão Pecuária.
 
-Índices de retorno (tuplas):
-lote        → (id[0], nome[1], descricao[2], data_entrada[3],
-qtd_comprada[4], qtd_recebida[5], transporte[6])
-animal      → (id[0], identificacao[1], idade[2], lote_id[3])
-pesagem     → (id[0], animal_id[1], peso[2], data[3])
-ocorrencia  → (id[0], animal_id[1], data[2], tipo[3], descricao[4],
-gravidade[5], custo[6], dias_recuperacao[7], status[8])
-usuario     → (id[0], nome[1], email[2], perfil[3], fazenda_id[4])
-vacina_agenda → (id[0], lote_id[1], nome_vacina[2], data_prevista[3],
-data_realizada[4], status[5], observacao[6])
-medicamento → (id[0], nome[1], unidade[2], estoque_atual[3],
-estoque_minimo[4], validade[5], custo_unitario[6])
-reproducao  → (id[0], animal_id[1], data_cio[2], tipo_cobertura[3],
-data_diagnostico[4], resultado[5], data_parto_previsto[6],
-data_parto_real[7], observacao[8])
-‘’’
+# 
+
+# Índices de retorno (tuplas):
+
+# lote        → (id[0], nome[1], descricao[2], data_entrada[3],
+
+# qtd_comprada[4], qtd_recebida[5], transporte[6])
+
+# animal      → (id[0], identificacao[1], idade[2], lote_id[3])
+
+# pesagem     → (id[0], animal_id[1], peso[2], data[3])
+
+# ocorrencia  → (id[0], animal_id[1], data[2], tipo[3], descricao[4],
+
+# gravidade[5], custo[6], dias_recuperacao[7], status[8])
+
+# usuario     → (id[0], nome[1], email[2], perfil[3], fazenda_id[4])
+
+# vacina_agenda → (id[0], lote_id[1], nome_vacina[2], data_prevista[3],
+
+# data_realizada[4], status[5], observacao[6])
+
+# medicamento → (id[0], nome[1], unidade[2], estoque_atual[3],
+
+# estoque_minimo[4], validade[5], custo_unitario[6])
+
+# reproducao  → (id[0], animal_id[1], data_cio[2], tipo_cobertura[3],
+
+# data_diagnostico[4], resultado[5], data_parto_previsto[6],
+
+# data_parto_real[7], observacao[8])
 
 import sqlite3
 import os
