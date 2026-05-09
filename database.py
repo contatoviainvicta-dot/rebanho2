@@ -10,12 +10,34 @@ from datetime import date as _date, timedelta as _td
 # ── Detectar qual banco usar ────────────────────────────────────────────────
 def _usar_postgres():
     try:
-        import psycopg2  # testar se está instalado
+        import psycopg2
+    except ImportError:
+        return False
+    try:
         import streamlit as st
-        url = st.secrets.get("database", {}).get("url", "")
+        db = st.secrets.get("database", {})
+        url = db.get("url", "")
         return url.startswith("postgresql://") or url.startswith("postgres://")
     except Exception:
         return False
+
+def _diagnostico_banco():
+    try:
+        import psycopg2
+        psycopg2_ok = True
+    except ImportError:
+        return "psycopg2 NAO instalado - usando SQLite"
+    try:
+        import streamlit as st
+        db = st.secrets.get("database", {})
+        url = db.get("url", "")
+        if not url:
+            return "Secret [database][url] nao encontrado - usando SQLite"
+        if not (url.startswith("postgresql://") or url.startswith("postgres://")):
+            return f"URL invalida: {url[:30]}... - usando SQLite"
+        return f"PostgreSQL OK: {url[:40]}..."
+    except Exception as e:
+        return f"Erro ao ler secrets: {e} - usando SQLite"
 
 def _get_pg_url():
     try:
