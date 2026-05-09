@@ -3,17 +3,10 @@
 
 import os as _os
 
-# Garantir que database.py esta integro (protege contra corrupcao de upload iPad)
-_db_ok = False
-if _os.path.exists("database.py"):
-    try:
-        import ast as _ast
-        _ast.parse(open("database.py").read())
-        _db_ok = True
-    except SyntaxError:
+# Sempre usar o database.py embutido no setup_db.py (versao garantidamente correta)
+if _os.path.exists("setup_db.py"):
+    if _os.path.exists("database.py"):
         _os.remove("database.py")
-
-if not _db_ok:
     exec(open("setup_db.py").read())
 
 import streamlit as st
