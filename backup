@@ -1,98 +1,47 @@
+# backup.py -- Backup automatico do banco de dados
+# Exporta todas as tabelas em ZIP com CSVs ou copia o arquivo SQLite.
+
 import io
 import csv
 import sqlite3
 import zipfile
 from datetime import datetime
 
-def gerar_backup_zip(db_path: str) -> bytes:
-‘’’
-Exporta todas as tabelas do banco em CSVs dentro de um ZIP.
-Retorna bytes do arquivo ZIP.
-‘’’
-buf = io.BytesIO()
 
-```
-conn = sqlite3.connect(db_path)
-conn.row_factory = sqlite3.Row
+def gerar_backup_zip(db_path):
+    buf = io.BytesIO()
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    tabelas = [
+        row[0] for row in
+        conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()
+    ]
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        meta = (
+            f"Backup gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+            f"Tabelas: {', '.join(tabelas)}\n"
+        )
+        zf.writestr("README.txt", meta)
+        for tabela in tabelas:
+            try:
+                rows = conn.execute(f"SELECT * FROM {tabela}").fetchall()
+                if not rows: continue
+                csv_buf = io.StringIO()
+                writer  = csv.writer(csv_buf)
+                writer.writerow(rows[0].keys())
+                writer.writerows([tuple(r) for r in rows])
+                zf.writestr(f"{tabela}.csv", csv_buf.getvalue())
+            except Exception as e:
+                zf.writestr(f"{tabela}_ERRO.txt", str(e))
+    conn.close()
+    return buf.getvalue()
 
-tabelas = [
-    row[0] for row in
-    conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-    ).fetchall()
-]
 
-with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-    # Arquivo de metadados
-    meta = (
-        f"Backup gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
-        f"Tabelas: {', '.join(tabelas)}\n"
-        f"Banco: {db_path}\n"
-    )
-    zf.writestr("README.txt", meta)
+def gerar_backup_sqlite(db_path):
+    with open(db_path, "rb") as f:
+        return f.read()
 
-    for tabela in tabelas:
-        try:
-            rows = conn.execute(f"SELECT * FROM {tabela}").fetchall()
-            if not rows:
-                continue
 
-            csv_buf = io.StringIO()
-            writer = csv.writer(csv_buf)
-            writer.writerow(rows[0].keys())   # cabeçalho
-            writer.writerows([tuple(r) for r in rows])
-            zf.writestr(f"{tabela}.csv", csv_buf.getvalue())
-        except Exception as e:
-            zf.writestr(f"{tabela}_ERRO.txt", str(e))
-
-conn.close()
-return buf.getvalue()
-```
-
-def gerar_backup_sqlite(db_path: str) -> bytes:
-‘’’
-Retorna uma cópia binária do arquivo .db (SQLite nativo).
-Mais fiel que CSV – pode ser restaurado diretamente.
-‘’’
-with open(db_path, “rb”) as f:
-return f.read()
-
-def nome_arquivo_backup(extensao: str = “zip”) -> str:
-ts = datetime.now().strftime(”%Y%m%d_%H%M%S”)
-return f”backup_pecuaria_{ts}.{extensao}”
-
-def enviar_backup_email(db_path: str, notif_module,
-destinatario: str, nome: str) -> tuple:
-‘’’
-Gera o ZIP e envia por e-mail usando o módulo notifications.
-Retorna (sucesso, mensagem).
-‘’’
-try:
-dados = gerar_backup_zip(db_path)
-nome_arq = nome_arquivo_backup(“zip”)
-ts = datetime.now().strftime(”%d/%m/%Y %H:%M”)
-
-```
-    corpo = f'''
-    <p>Olá, <strong>{nome}</strong>!</p>
-    <p>Segue o backup automático do banco de dados gerado em <strong>{ts}</strong>.</p>
-    <p>O arquivo ZIP contém todas as tabelas exportadas em formato CSV.</p>
-    <p style="font-size:12px;color:#888">
-      Guarde este backup em local seguro.
-      Em caso de reinicialização do servidor, seus dados podem ser restaurados.
-    </p>
-    '''
-
-    # Envia e-mail simples (sem anexo binário -- inclui aviso de download)
-    ok, msg = notif_module._enviar(
-        destinatario,
-        f"💾 Backup do sistema -- {ts}",
-        notif_module._template("Backup Automático", corpo),
-    )
-
-    # Retorna também os bytes para download direto na UI
-    return ok, msg, dados, nome_arq
-
-except Exception as e:
-    return False, str(e), b"", ""
-```
+def nome_arquivo_backup(extensao="zip"):
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"backup_pecuaria_{ts}.{extensao}"
