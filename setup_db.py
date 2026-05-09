@@ -1,4 +1,5 @@
-# setup_db.py -- reconstroi database.py a partir de base64 puro ASCII
+# setup_db.py -- database.py embutido em base64 ASCII puro
+# Versao: com _date_add para compatibilidade PostgreSQL/SQLite
 import base64 as _b64, os as _os
 
 def _restaurar():
