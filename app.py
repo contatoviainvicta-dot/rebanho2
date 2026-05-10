@@ -2260,6 +2260,7 @@ elif menu == "Cadastrar Lote":
                 lid = adicionar_lote(nome, descricao, str(data_ent), qtd_comp, qtd_rec, transporte,
                                     owner_id=_oid_lote)
                 registrar_auditoria(u["id"], "criar_lote", "lotes", lid, nome)
+                _limpar_cache()
                 st.success(f"Lote **{nome}** criado!")
     with c2:
         st.markdown("#### Dicas")
@@ -2314,6 +2315,7 @@ elif menu == "Cadastrar Animal":
                         aid = adicionar_animal(ident, idade, lote_id)
                         if p_alvo > 0: atualizar_animal_detalhes(aid, peso_alvo=p_alvo)
                         registrar_auditoria(u["id"], "cadastro_animal", "animais", aid, ident)
+                        _limpar_cache()
                         st.success(f"**{ident}** cadastrado no lote **{lote[1]}**!")
                         st.rerun()
 
@@ -2476,6 +2478,7 @@ elif menu == "Importar CSV":
                 if nome_nl:
                     lote_id = adicionar_lote(nome_nl, "", str(data_nl), qtd_c2, qtd_r2, trp_nl, owner_id=u.get("owner_id", u["id"]))
                     registrar_auditoria(u["id"], "criar_lote", "lotes", lote_id, nome_nl)
+                    _limpar_cache()
                     st.success(f"Lote '{nome_nl}' criado!")
                     st.rerun()
                 else: st.error("Informe o nome.")
@@ -3942,6 +3945,7 @@ elif menu == "Editar Lote":
                     # qtd_recebida e sempre recalculada pelos animais ativos reais
                     atualizar_lote(lote_id, nome_e, desc_e, str(data_e), qtd_comp_e, ativos_reais, transp_e, preco_e)
                     registrar_auditoria(u["id"], "editar_lote", "lotes", lote_id, nome_e)
+                    _limpar_cache()
                     st.success(f"Lote **{nome_e}** atualizado! Animais ativos: {ativos_reais}")
                     st.rerun()
 
@@ -3957,6 +3961,7 @@ elif menu == "Editar Lote":
                     if st.button("Excluir lote definitivamente", type="primary"):
                         excluir_lote(lote_id)
                         registrar_auditoria(u["id"], "excluir_lote", "lotes", lote_id, lote[1])
+                        _limpar_cache()
                         st.success("Lote excluido com sucesso.")
                         st.rerun()
 
