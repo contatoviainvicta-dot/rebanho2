@@ -2257,11 +2257,17 @@ elif menu == "Cadastrar Animal":
                 if not ident:
                     st.error("Informe a identificacao do animal")
                 else:
-                    aid = adicionar_animal(ident, idade, lote_id)
-                    if p_alvo > 0: atualizar_animal_detalhes(aid, peso_alvo=p_alvo)
-                    registrar_auditoria(u["id"], "cadastro_animal", "animais", aid, ident)
-                    st.success(f"**{ident}** cadastrado no lote **{lote[1]}**!")
-                    st.rerun()
+                    # Verificar limite do plano antes de cadastrar
+                    _oid_anim = u.get("owner_id", u["id"])
+                    _lim = verificar_limite_animais(_oid_anim) if not _is_admin() else dict(ok=True)
+                    if not _lim["ok"]:
+                        st.error(f"Limite do plano atingido: {_lim.get('msg','')}. Faca upgrade para continuar.")
+                    else:
+                        aid = adicionar_animal(ident, idade, lote_id)
+                        if p_alvo > 0: atualizar_animal_detalhes(aid, peso_alvo=p_alvo)
+                        registrar_auditoria(u["id"], "cadastro_animal", "animais", aid, ident)
+                        st.success(f"**{ident}** cadastrado no lote **{lote[1]}**!")
+                        st.rerun()
 
 # ============================================================
 # REGISTRAR PESAGEM
