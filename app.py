@@ -1722,6 +1722,12 @@ from database import (
     gerar_insights_lote,
     listar_pesagens_todos_animais, listar_ocorrencias_todos_animais,
     calcular_gmds_lote, calcular_scores_lote, resumo_dashboard,
+    PLANOS_FAZENDEIRO, PLANOS_VETERINARIO,
+    definir_plano_usuario, obter_limites_usuario,
+    verificar_limite_animais, verificar_limite_fazendas,
+    solicitar_acesso_vet, aprovar_acesso_vet, revogar_acesso_vet,
+    listar_acessos_vet, listar_fazendas_do_vet, listar_lotes_vet,
+    listar_solicitacoes_pendentes, aprovar_conta_usuario,
 )
 
 try:
