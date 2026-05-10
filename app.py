@@ -2155,7 +2155,15 @@ elif menu == "Buscar Animal":
     hdr("Buscar Animal", "Busca Global", "Encontre qualquer animal pelo brinco ou identificacao")
     termo = st.text_input("Identificacao / brinco", placeholder="Ex: BOI-001")
     if termo:
-        encontrados = [a for a in listar_animais() if termo.lower() in a[1].lower()]
+        # Buscar apenas nos lotes do usuario logado
+        _lotes_busca = _listar_lotes_usuario()
+        _lids_busca  = {l[0] for l in _lotes_busca}
+        encontrados  = [
+            a
+            for lid in _lids_busca
+            for a in listar_animais_por_lote(lid)
+            if termo.lower() in a[1].lower()
+        ]
         if encontrados:
             st.success(f"{len(encontrados)} animal(is) encontrado(s)")
             for a in encontrados:
@@ -2225,7 +2233,7 @@ elif menu == "Cadastrar Lote":
 # ============================================================
 elif menu == "Cadastrar Animal":
     hdr("Cadastrar Animal", "Novo Animal", "Vincule um animal a um lote")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Cadastre um lote primeiro.")
     else:
@@ -2274,7 +2282,7 @@ elif menu == "Cadastrar Animal":
 # ============================================================
 elif menu == "Registrar Pesagem":
     hdr("Registrar Pesagem", "Novo Peso", "Registre o peso atual de um animal")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Cadastre um lote primeiro.")
     else:
@@ -2326,7 +2334,7 @@ elif menu == "Registrar Pesagem":
 # ============================================================
 elif menu == "Registrar Ocorrencia":
     hdr("Registrar Ocorrencia", "Nova Ocorrencia", "Doencas, lesoes e medicacoes")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Cadastre um lote primeiro.")
     else:
@@ -2365,7 +2373,7 @@ elif menu == "Registrar Morte":
     hdr("Registrar Morte", "Baixa de Animal", "Registre a morte e retire o animal do lote")
     tab1,tab2 = st.tabs(["Registrar", "Historico"])
     with tab1:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if not lotes:
             st.warning("Cadastre um lote primeiro.")
         else:
@@ -2393,7 +2401,7 @@ elif menu == "Registrar Morte":
                     st.success("Morte registrada. Animal removido do lote.")
                     st.rerun()
     with tab2:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if lotes:
             dict_l2 = {"Todos": None, **{f"{l[1]} (ID {l[0]})": l[0] for l in lotes}}
             filtro_m = st.selectbox("Filtrar por lote", list(dict_l2.keys()), key="mort_hist")
@@ -2410,7 +2418,7 @@ elif menu == "Registrar Morte":
 # ============================================================
 elif menu == "Importar CSV":
     hdr("Importar CSV", "Importacao em Lote", "Importe pesagens e animais via planilha CSV")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     st.subheader("Lote de destino")
     opcao = st.radio("", ["Usar lote existente","Criar novo lote"], horizontal=True, key="imp_op")
     lote_id = None
@@ -2431,7 +2439,7 @@ elif menu == "Importar CSV":
                     st.success(f"Lote '{nome_nl}' criado!")
                     st.rerun()
                 else: st.error("Informe o nome.")
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if lotes: lote_id = lotes[0][0]; st.info(f"Lote: {lotes[0][1]}")
     else:
         if not lotes: st.warning("Crie um lote primeiro."); st.stop()
@@ -2477,17 +2485,20 @@ elif menu == "Importar CSV":
 # ============================================================
 elif menu == "Dashboard Sanitario":
     hdr("Dashboard Sanitario", "Saude do Rebanho", "Incidencias, curva epidemica e alertas")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     opcoes = ["Todos os lotes"] + [f"{l[1]} (ID {l[0]})" for l in lotes]
     dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
     escolha = st.selectbox("Filtrar por lote", opcoes)
-    animais = listar_animais() if escolha == "Todos os lotes" else listar_animais_por_lote(dict_l[escolha])
+    if escolha == "Todos os lotes":
+        animais = [a for l in _listar_lotes_usuario() for a in listar_animais_por_lote(l[0])]
+    else:
+        animais = listar_animais_por_lote(dict_l[escolha])
 
     # Query agregada em vez de N+1
     if escolha == "Todos os lotes":
         import database as _dbl
         todas_oc = []
-        for l in listar_lotes():
+        for l in _listar_lotes_usuario():
             todas_oc.extend(listar_ocorrencias_todos_animais(l[0]))
     else:
         lote_id_san = dict_l.get(escolha)
@@ -2629,7 +2640,7 @@ elif menu == "Analisar por Lote":
 # ============================================================
 elif menu == "Analisar Animal":
     hdr("Analisar Animal", "Analise Individual", "Historico de peso, ocorrencias e alertas")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado")
     else:
@@ -2765,7 +2776,7 @@ elif menu == "GMD Temporal":
 # ============================================================
 elif menu == "Comparativo Lotes":
     hdr("Comparativo Lotes", "Comparativo entre Lotes", "Side-by-side de GMD, custos e resultados")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if len(lotes) < 2:
         st.warning("Cadastre pelo menos 2 lotes.")
     else:
@@ -2819,7 +2830,7 @@ elif menu == "Painel de Decisao":
     hdr("Painel de Decisao", "Decisao Financeira", "Resultado financeiro por lote")
     pk = st.number_input("Preco kg (R$)", 0.0, 50.0, 10.0)
     cd = st.number_input("Custo diario/animal (R$)", 0.0, 100.0, 10.0)
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes: st.warning("Nenhum lote."); st.stop()
     dados = []
     for l in lotes:
@@ -2905,7 +2916,7 @@ elif menu == "Dashboard Executivo":
 # ============================================================
 elif menu == "Pesquisar Ocorrencias":
     hdr("Pesquisar Ocorrencias", "Busca de Ocorrencias", "Filtros por lote, tipo e gravidade")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
     f1,f2,f3 = st.columns(3)
     with f1: escolha_l = st.selectbox("Lote", ["Todos"]+list(dict_l.keys()))
@@ -2913,7 +2924,7 @@ elif menu == "Pesquisar Ocorrencias":
     with f3: grav_f    = st.selectbox("Gravidade", ["Todas","Baixa","Media","Alta"])
     if escolha_l == "Todos":
         todas_oc_raw = []
-        for l in listar_lotes():
+        for l in _listar_lotes_usuario():
             todas_oc_raw.extend(listar_ocorrencias_todos_animais(l[0]))
     else:
         todas_oc_raw = listar_ocorrencias_todos_animais(dict_l[escolha_l])
@@ -2948,7 +2959,7 @@ elif menu == "Calendario Sanitario":
     hdr("Calendario Sanitario", "Vacinas e Medicacoes", "Agenda de vacinas e alertas")
     t1,t2,t3 = st.tabs(["Agenda","Agendar","Confirmar"])
     with t1:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if lotes:
             d = {"Todos": None, **{f"{l[1]} (ID {l[0]})": l[0] for l in lotes}}
             f  = st.selectbox("Lote", list(d.keys()), key="cal_f")
@@ -2967,7 +2978,7 @@ elif menu == "Calendario Sanitario":
                     else:                           st.warning(f"Pendente: {row['Vacina']} - {row['Previsto']}")
             else: st.info("Nenhuma vacina agendada.")
     with t2:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if not lotes: st.warning("Cadastre um lote.")
         else:
             dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
@@ -3035,7 +3046,7 @@ elif menu == "Estoque Medicamentos":
                 else: st.error("Informe o nome.")
     with t3:
         meds  = listar_medicamentos()
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if not meds or not lotes: st.warning("Cadastre medicamentos e lotes.")
         else:
             dict_md = {f"{m[1]} ({m[3]:.1f} {m[2]})": m[0] for m in meds}
@@ -3070,7 +3081,7 @@ elif menu == "Controle Reprodutivo":
             c2.metric("Positivas",    tp["positivas"])
             c3.metric("Taxa prenhez", f"{tp['taxa']:.1f}%")
     with t2:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if lotes:
             dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
             with st.form("form_cob"):
@@ -3088,7 +3099,7 @@ elif menu == "Controle Reprodutivo":
                     adicionar_reproducao(dict_ar[anim_rs], tipo_r, data_cio=str(data_r), observacao=obs_r)
                     st.success("Cobertura registrada!"); st.rerun()
     with t3:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if lotes:
             dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
             d1,d2 = st.columns(2)
@@ -3153,7 +3164,7 @@ elif menu == "Mapa Piquetes":
                 else: st.error("Informe o nome.")
     with t3:
         pqs   = listar_piquetes()
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if not pqs or not lotes: st.warning("Cadastre piquetes e lotes.")
         else:
             dict_pq = {f"{p[2]} (ID {p[0]})": p[0] for p in pqs}
@@ -3389,7 +3400,7 @@ elif menu == "Prontuario Animal":
         st.markdown("".join(html_parts), unsafe_allow_html=True)
 
     # ── selecao ───────────────────────────────────────────────────────────
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes: st.warning("Nenhum lote.")
     else:
         dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
@@ -3576,7 +3587,7 @@ elif menu == "Rastreabilidade GTA":
             st.dataframe(df_g, use_container_width=True)
         else: st.info("Nenhuma GTA.")
     with t2:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if not lotes: st.warning("Cadastre um lote.")
         else:
             dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
@@ -3599,7 +3610,7 @@ elif menu == "Rastreabilidade GTA":
                         st.success("GTA registrada!"); st.rerun()
                     else: st.error("Preencha numero, origem e destino.")
     with t3:
-        lotes = listar_lotes()
+        lotes = _listar_lotes_usuario()
         if lotes:
             dict_l = {f"{l[1]} (ID {l[0]})": l[0] for l in lotes}
             s1,s2 = st.columns(2)
@@ -3838,7 +3849,7 @@ elif menu == "Editar Lote":
             st.success("Contagens atualizadas com sucesso!")
             st.rerun()
 
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado.")
     else:
@@ -3905,7 +3916,7 @@ elif menu == "Editar Lote":
 # ============================================================
 elif menu == "Editar Animal":
     hdr("Editar Animal", "Editar / Excluir Animal", "Altere ou remova um animal cadastrado")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado.")
     else:
@@ -3977,7 +3988,7 @@ elif menu == "Editar Animal":
 # ============================================================
 elif menu == "Editar Pesagens":
     hdr("Editar Pesagens", "Corrigir Pesagens", "Edite ou exclua pesagens incorretas")
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado.")
     else:
@@ -4081,7 +4092,7 @@ elif menu == "Gerenciar Ocorrencias":
     st.divider()
 
     # ── Selecao ────────────────────────────────────────────────────────
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado.")
         st.stop()
@@ -4218,7 +4229,7 @@ elif menu == "Gerenciar Ocorrencias":
 elif menu == "Transferir Animal":
     hdr("Transferir Animal", "Transferencia entre Lotes", "Mova animais mantendo o historico completo")
 
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if len(lotes) < 2:
         st.warning("Necessario ter ao menos 2 lotes cadastrados para transferir animais.")
         st.stop()
@@ -4309,7 +4320,7 @@ elif menu == "Transferir Animal":
 elif menu == "Status do Lote":
     hdr("Status do Lote", "Gerenciar Status", "Atualize o status dos seus lotes e animais")
 
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado.")
         st.stop()
@@ -4327,7 +4338,8 @@ elif menu == "Status do Lote":
             "VENDIDO":    ("blue",   "Lote comercializado"),
         }
 
-        todos_lotes = listar_lotes_por_status()
+        _lotes_raw = _listar_lotes_usuario()
+        todos_lotes = [(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7] if len(l)>7 else "ATIVO") for l in _lotes_raw]
         for lote_row in todos_lotes:
             lid_s, nome_s = lote_row[0], lote_row[1]
             status_s = lote_row[7] if len(lote_row) > 7 else "ATIVO"
@@ -4397,13 +4409,14 @@ elif menu == "Status do Lote":
 elif menu == "Workspace do Lote":
     hdr("Workspace do Lote", "Visao Completa", "Tudo sobre o lote em um lugar so")
 
-    lotes = listar_lotes()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado.")
         st.stop()
 
     # Selector do lote no topo
-    todos_lotes_ws = listar_lotes_por_status()
+    _lotes_ws_raw = _listar_lotes_usuario()
+    todos_lotes_ws = [(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7] if len(l)>7 else "ATIVO") for l in _lotes_ws_raw]
     dict_ws = {f"{l[1]}": l[0] for l in todos_lotes_ws}
 
     col_sel, col_status = st.columns([3, 1])
@@ -4413,7 +4426,8 @@ elif menu == "Workspace do Lote":
 
     @st.cache_data(ttl=300, show_spinner="Carregando dados do lote...")
     def _ws_dados(lid):
-        todos = listar_lotes_por_status()
+        _raw = _listar_lotes_usuario()
+        todos = [(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7] if len(l)>7 else "ATIVO") for l in _raw]
         return dict(
             lote        = obter_lote(lid),
             status      = next((l[7] for l in todos if l[0]==lid), "ATIVO"),
