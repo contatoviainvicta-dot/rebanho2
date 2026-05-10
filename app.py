@@ -1993,7 +1993,9 @@ with st.sidebar:
             ("Score de Saude",       "Ranking 0-100"),
             ("GMD Temporal",         "Evolucao no tempo"),
             ("Comparativo Lotes",    "Side by side"),
+        ] + ([] if _is_vet() else [
             ("Painel de Decisao",    "Lucro por lote"),
+        ]) + [
             ("Dashboard Executivo",  "KPIs do lote"),
             ("Pesquisar Ocorrencias","Filtros avancados"),
         ],
@@ -2005,12 +2007,14 @@ with st.sidebar:
             ("Mapa Piquetes",        "Pastagens"),
             ("Previsao Abate",       "Data estimada"),
             ("Prontuario Animal",    "Historico completo"),
-            ("Margem Real",          "Compra x Venda"),
             ("Cotacao Cepea",        "Preco boi gordo"),
+        ] + ([] if _is_vet() else [
+            ("Margem Real",          "Compra x Venda"),
+        ]) + [
         ],
-        "Rastreabilidade": [
+        "Rastreabilidade": ([] if _is_vet() else [
             ("Rastreabilidade GTA",  "GTA e SISBOV"),
-        ],
+        ]),
         "Relatorios": [
             ("Exportar Relatorios",  "PDF e Excel"),
             ("Backup",               "Download do banco"),
@@ -2828,6 +2832,9 @@ elif menu == "Comparativo Lotes":
 # ============================================================
 elif menu == "Painel de Decisao":
     hdr("Painel de Decisao", "Decisao Financeira", "Resultado financeiro por lote")
+    if _is_vet():
+        st.error("Acesso restrito. Dados financeiros nao disponiveis para veterinarios.")
+        st.stop()
     pk = st.number_input("Preco kg (R$)", 0.0, 50.0, 10.0)
     cd = st.number_input("Custo diario/animal (R$)", 0.0, 100.0, 10.0)
     lotes = _listar_lotes_usuario()
@@ -2996,7 +3003,7 @@ elif menu == "Calendario Sanitario":
                         st.success("Agendado!"); st.rerun()
                     else: st.error("Informe o nome.")
     with t3:
-        pend_v = listar_vacinas_pendentes()
+        pend_v = listar_vacinas_pendentes(owner_id=_owner_id())
         if not pend_v: st.success("Nenhuma vacina pendente.")
         else:
             df_p = pd.DataFrame(pend_v, columns=["ID","Lote ID","Lote","Vacina","Previsto","Status","Obs"])
@@ -3502,6 +3509,9 @@ elif menu == "Prontuario Animal":
 # ============================================================
 elif menu == "Margem Real":
     hdr("Margem Real", "Margem Real do Lote", "Resultado: compra x venda x custos")
+    if _is_vet():
+        st.error("Acesso restrito. Dados financeiros nao disponiveis para veterinarios.")
+        st.stop()
     lote_id, _ = sel_lote("margem_lote")
     if lote_id:
         t1,t2 = st.tabs(["Resultado","Registrar Venda"])
@@ -3579,6 +3589,9 @@ elif menu == "Cotacao Cepea":
 # ============================================================
 elif menu == "Rastreabilidade GTA":
     hdr("Rastreabilidade GTA", "GTA e SISBOV", "Guia de Transito Animal e certificacao")
+    if _is_vet():
+        st.error("Acesso restrito. Rastreabilidade GTA disponivel apenas para fazendeiros e admin.")
+        st.stop()
     t1,t2,t3 = st.tabs(["GTAs","Emitir GTA","SISBOV"])
     with t1:
         gtas = listar_gta()
@@ -4071,7 +4084,7 @@ elif menu == "Gerenciar Ocorrencias":
     hdr("Gerenciar Ocorrencias", "Tratamentos e Ocorrencias", "Edite ocorrencias e resolva tratamentos pendentes")
 
     # ── Painel de alertas de tratamentos vencidos ──────────────────────
-    vencidos = listar_tratamentos_vencidos()
+    vencidos = listar_tratamentos_vencidos(owner_id=_owner_id())
     if vencidos:
         st.error(f"ATENCAO: {len(vencidos)} tratamento(s) com prazo vencido!")
         with st.expander(f"Ver {len(vencidos)} tratamento(s) vencido(s)", expanded=True):
@@ -4495,9 +4508,15 @@ elif menu == "Workspace do Lote":
         st.write("")
 
     # Abas do workspace
-    aba_res, aba_anim, aba_pes, aba_san, aba_fin, aba_rel = st.tabs([
-        "Resumo", "Animais", "Pesagens", "Sanidade", "Financeiro", "Relatorios"
-    ])
+    if _is_vet():
+        aba_res, aba_anim, aba_pes, aba_san, aba_rel = st.tabs([
+            "Resumo", "Animais", "Pesagens", "Sanidade", "Relatorios"
+        ])
+        aba_fin = None
+    else:
+        aba_res, aba_anim, aba_pes, aba_san, aba_fin, aba_rel = st.tabs([
+            "Resumo", "Animais", "Pesagens", "Sanidade", "Financeiro", "Relatorios"
+        ])
 
     # ── ABA RESUMO ────────────────────────────────────────────────────────────
     with aba_res:
@@ -4639,7 +4658,8 @@ elif menu == "Workspace do Lote":
                 st.success("Estoque OK")
 
     # ── ABA FINANCEIRO ────────────────────────────────────────────────────────
-    with aba_fin:
+    if aba_fin is not None:
+     with aba_fin:
         col_f1, col_f2 = st.columns(2)
 
         with col_f1:
