@@ -1963,6 +1963,7 @@ with st.sidebar:
             ("Notificacoes",         "E-mail e alertas"),
             ("Log Auditoria",        "Historico de acoes"),
             ("Administracao",        "Usuarios e planos"),
+            ("Gestao Usuarios",      "Planos e acessos vet"),
         ],
     }
 
