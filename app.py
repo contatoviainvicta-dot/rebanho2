@@ -1853,6 +1853,10 @@ def _listar_lotes_cache(owner_id=None):
 def _listar_animais_cache(lote_id):
     return listar_animais_por_lote(lote_id)
 
+def _limpar_cache():
+    _listar_lotes_cache.clear()
+    _listar_animais_cache.clear()
+
 def _is_admin():
     u = st.session_state.get("usuario")
     return bool(u and u.get("perfil") == "admin")
