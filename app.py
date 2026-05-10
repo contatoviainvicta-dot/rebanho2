@@ -1796,15 +1796,36 @@ def hdr(icone, titulo, sub=""):
     st.divider()
 
 @st.cache_data(ttl=600, show_spinner=False)
-def _listar_lotes_cache():
-    return listar_lotes()
+def _listar_lotes_cache(owner_id=None):
+    return listar_lotes(owner_id=owner_id)
 
 @st.cache_data(ttl=600, show_spinner=False)
 def _listar_animais_cache(lote_id):
     return listar_animais_por_lote(lote_id)
 
+def _is_admin():
+    u = st.session_state.get("usuario")
+    return bool(u and u.get("perfil") == "admin")
+
+def _is_vet():
+    u = st.session_state.get("usuario")
+    return bool(u and u.get("perfil") == "veterinario")
+
+def _owner_id():
+    u = st.session_state.get("usuario")
+    if not u: return None
+    if u.get("perfil") == "admin": return None
+    return u.get("owner_id", u["id"])
+
+def _listar_lotes_usuario():
+    u = st.session_state.get("usuario")
+    if not u: return []
+    if _is_admin(): return listar_lotes()
+    if _is_vet():   return listar_lotes_vet(u["id"])
+    return _listar_lotes_cache(owner_id=_owner_id())
+
 def sel_lote(key="lote"):
-    lotes = _listar_lotes_cache()
+    lotes = _listar_lotes_usuario()
     if not lotes:
         st.warning("Nenhum lote cadastrado. Va em Cadastrar Lote primeiro.")
         return None, None
