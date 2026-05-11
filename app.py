@@ -1908,11 +1908,91 @@ _DB_B64 = (
     'ICAgICAgICAgICAgIHByaW5jaXBhbF9yaXNjbz1yaXNjb1snZmF0b3JlcyddWzBdIGlmIHJpc2Nv'
     'WydmYXRvcmVzJ10gZWxzZSAnJywKICAgICAgICAgICAgKSkKICAgICAgICBleGNlcHQgRXhjZXB0'
     'aW9uOgogICAgICAgICAgICBwYXNzCiAgICByZXR1cm4gc29ydGVkKHJlc3VsdGFkbywga2V5PWxh'
-    'bWJkYSB4OiB4WydyaXNjb19zY29yZSddLCByZXZlcnNlPVRydWUpCgoKZGVmIHNpbmNyb25pemFy'
-    'X3RvZG9zX2xvdGVzKCk6CiAgICBsb3RlcyA9IGxpc3Rhcl9sb3RlcygpCiAgICByZXN1bHRhZG9z'
-    'ID0gW10KICAgIGZvciBsIGluIGxvdGVzOgogICAgICAgIG4gPSBhdHVhbGl6YXJfcXRkX2xvdGUo'
-    'bFswXSkKICAgICAgICByZXN1bHRhZG9zLmFwcGVuZCgobFswXSwgbFsxXSwgbikpCiAgICByZXR1'
-    'cm4gcmVzdWx0YWRvcwo='
+    'bWJkYSB4OiB4WydyaXNjb19zY29yZSddLCByZXZlcnNlPVRydWUpCgoKZGVmIGtwaXNfZXhlY3V0'
+    'aXZvcyhvd25lcl9pZD1Ob25lKToKICAgICIiIgogICAgS1BJcyBjb25zb2xpZGFkb3MgcGFyYSBv'
+    'IERhc2hib2FyZCBFeGVjdXRpdm8uCiAgICBSZXRvcm5hIG1ldHJpY2FzIGZpbmFuY2VpcmFzLCBz'
+    'YW5pdGFyaWFzIGUgcHJvZHV0aXZhcyBkYSBmYXplbmRhLgogICAgIiIiCiAgICBpbXBvcnQgcGFu'
+    'ZGFzIGFzIHBkCiAgICBmcm9tIGRhdGV0aW1lIGltcG9ydCBkYXRlIGFzIF9kLCB0aW1lZGVsdGEg'
+    'YXMgX3RkCgogICAgbG90ZXMgPSBsaXN0YXJfbG90ZXMob3duZXJfaWQ9b3duZXJfaWQpCiAgICBp'
+    'ZiBub3QgbG90ZXM6CiAgICAgICAgcmV0dXJuIHt9CgogICAgaWRzX2xvdGVzID0gW2xbMF0gZm9y'
+    'IGwgaW4gbG90ZXNdCgogICAgIyDilIDilIAgQ29udGFnZW5zIGJhc2ljYXMg4pSA4pSA4pSA4pSA'
+    '4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA'
+    '4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA'
+    '4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICBwID0gX3BoKCkKICAgIHdpdGgg'
+    'X2NvbmV4YW8oKSBhcyBjb25uOgogICAgICAgIGN1ciA9IGNvbm4uY3Vyc29yKCkKICAgICAgICBw'
+    'bGFjZWhvbGRlcnMgPSAnLCcuam9pbihbc3RyKHApXSAqIGxlbihpZHNfbG90ZXMpKSBpZiBfdXNh'
+    'cl9wb3N0Z3JlcygpIGVsc2UgJywnLmpvaW4oWyc/J10gKiBsZW4oaWRzX2xvdGVzKSkKCiAgICAg'
+    'ICAgY3VyLmV4ZWN1dGUoZiJTRUxFQ1QgQ09VTlQoKikgRlJPTSBhbmltYWlzIGEgSk9JTiBsb3Rl'
+    'cyBsIE9OIGwuaWQ9YS5sb3RlX2lkIFdIRVJFIGwuaWQgSU4gKHtwbGFjZWhvbGRlcnN9KSBBTkQg'
+    'Q09BTEVTQ0UoYS5hdGl2bywxKT0xIiwgaWRzX2xvdGVzKQogICAgICAgIHRvdGFsX2FuaW1haXMg'
+    'PSBjdXIuZmV0Y2hvbmUoKVswXQoKICAgICAgICBjdXIuZXhlY3V0ZShmIlNFTEVDVCBDT1VOVCgq'
+    'KSBGUk9NIG1vcnRhbGlkYWRlIG0gSk9JTiBhbmltYWlzIGEgT04gYS5pZD1tLmFuaW1hbF9pZCBK'
+    'T0lOIGxvdGVzIGwgT04gbC5pZD1hLmxvdGVfaWQgV0hFUkUgbC5pZCBJTiAoe3BsYWNlaG9sZGVy'
+    'c30pIiwgaWRzX2xvdGVzKQogICAgICAgIHRvdGFsX21vcnRlcyA9IGN1ci5mZXRjaG9uZSgpWzBd'
+    'CgogICAgICAgIGN1ci5leGVjdXRlKGYiU0VMRUNUIENPQUxFU0NFKFNVTShvLmN1c3RvKSwwKSBG'
+    'Uk9NIG9jb3JyZW5jaWFzIG8gSk9JTiBhbmltYWlzIGEgT04gYS5pZD1vLmFuaW1hbF9pZCBKT0lO'
+    'IGxvdGVzIGwgT04gbC5pZD1hLmxvdGVfaWQgV0hFUkUgbC5pZCBJTiAoe3BsYWNlaG9sZGVyc30p'
+    'IiwgaWRzX2xvdGVzKQogICAgICAgIGN1c3RvX3Nhbml0YXJpbyA9IGZsb2F0KGN1ci5mZXRjaG9u'
+    'ZSgpWzBdIG9yIDApCgogICAgICAgIGN1ci5leGVjdXRlKGYiU0VMRUNUIENPVU5UKCopIEZST00g'
+    'dmFjaW5hc19hZ2VuZGEgdiBXSEVSRSB2LmxvdGVfaWQgSU4gKHtwbGFjZWhvbGRlcnN9KSBBTkQg'
+    'di5zdGF0dXM9J3BlbmRlbnRlJyIsIGlkc19sb3RlcykKICAgICAgICB2YWNpbmFzX3BlbmQgPSBj'
+    'dXIuZmV0Y2hvbmUoKVswXQoKICAgICAgICBjdXIuZXhlY3V0ZShmIlNFTEVDVCBDT1VOVCgqKSBG'
+    'Uk9NIG9jb3JyZW5jaWFzIG8gSk9JTiBhbmltYWlzIGEgT04gYS5pZD1vLmFuaW1hbF9pZCBKT0lO'
+    'IGxvdGVzIGwgT04gbC5pZD1hLmxvdGVfaWQgV0hFUkUgbC5pZCBJTiAoe3BsYWNlaG9sZGVyc30p'
+    'IEFORCBvLnN0YXR1cz0nRW0gdHJhdGFtZW50byciLCBpZHNfbG90ZXMpCiAgICAgICAgZW1fdHJh'
+    'dGFtZW50byA9IGN1ci5mZXRjaG9uZSgpWzBdCgogICAgIyDilIDilIAgR01EIG1lZGlvIGdlcmFs'
+    'IOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKU'
+    'gOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKU'
+    'gOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAg'
+    'dG9kb3NfZ21kcyA9IFtdCiAgICBmb3IgbGlkIGluIGlkc19sb3RlczoKICAgICAgICBnbWRzID0g'
+    'Y2FsY3VsYXJfZ21kc19sb3RlKGxpZCkKICAgICAgICB0b2Rvc19nbWRzLmV4dGVuZChnIGZvciBn'
+    'IGluIGdtZHMudmFsdWVzKCkgaWYgZyA+IDApCgogICAgZ21kX2dlcmFsID0gc3VtKHRvZG9zX2dt'
+    'ZHMpIC8gbGVuKHRvZG9zX2dtZHMpIGlmIHRvZG9zX2dtZHMgZWxzZSAwCgogICAgIyDilIDilIAg'
+    'VGF4YSBkZSBtb3J0YWxpZGFkZSBnZXJhbCDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDi'
+    'lIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDi'
+    'lIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgIHRvdGFs'
+    'X2NhYmVjYXMgPSBzdW0obGlzdGFyX2xvdGVzKG93bmVyX2lkPW93bmVyX2lkKVtpXVs0XSBvciAw'
+    'IGZvciBpIGluIHJhbmdlKGxlbihsb3RlcykpKQogICAgdGF4YV9tb3J0X2dlcmFsID0gcm91bmQo'
+    'dG90YWxfbW9ydGVzIC8gbWF4KHRvdGFsX2NhYmVjYXMsIDEpICogMTAwLCAyKQoKICAgICMg4pSA'
+    '4pSAIFJpc2NvIG1lZGlvIGRvcyBsb3RlcyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDi'
+    'lIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDi'
+    'lIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDi'
+    'lIAKICAgIHJpc2NvcyA9IFtdCiAgICBmb3IgbGlkIGluIGlkc19sb3RlczoKICAgICAgICB0cnk6'
+    'CiAgICAgICAgICAgIHIgPSBjYWxjdWxhcl9yaXNjb19zYW5pdGFyaW8obGlkKQogICAgICAgICAg'
+    'ICByaXNjb3MuYXBwZW5kKHJbJ3Njb3JlJ10pCiAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAg'
+    'ICAgICAgICAgcGFzcwogICAgcmlzY29fbWVkaW8gPSByb3VuZChzdW0ocmlzY29zKSAvIGxlbihy'
+    'aXNjb3MpLCAxKSBpZiByaXNjb3MgZWxzZSAwCgogICAgIyDilIDilIAgTG90ZSBtYWlzIGNyaXRp'
+    'Y28g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA'
+    '4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA'
+    '4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICByZXN1'
+    'bW9fciA9IHJlc3Vtb19pYV9mYXplbmRhKG93bmVyX2lkPW93bmVyX2lkKQogICAgbG90ZV9jcml0'
+    'aWNvID0gcmVzdW1vX3JbMF0gaWYgcmVzdW1vX3IgZWxzZSBOb25lCgogICAgIyDilIDilIAgRXZv'
+    'bHVjYW8gZGUgYW5pbWFpcyAodWx0aW1vcyA2IG1lc2VzKSDilIDilIDilIDilIDilIDilIDilIDi'
+    'lIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDi'
+    'lIDilIDilIDilIDilIDilIAKICAgIGV2b2x1Y2FvID0gW10KICAgIGhvamUgPSBfZC50b2RheSgp'
+    'CiAgICBmb3IgbSBpbiByYW5nZSg1LCAtMSwgLTEpOgogICAgICAgIG1lc19yZWYgPSBob2plLnJl'
+    'cGxhY2UoZGF5PTEpIC0gX3RkKGRheXM9bSozMCkKICAgICAgICBtZXNfc3RyID0gbWVzX3JlZi5z'
+    'dHJmdGltZSgnJWIvJXknKQogICAgICAgIHdpdGggX2NvbmV4YW8oKSBhcyBjb25uOgogICAgICAg'
+    'ICAgICBjdXIgPSBjb25uLmN1cnNvcigpCiAgICAgICAgICAgIGN1ci5leGVjdXRlKAogICAgICAg'
+    'ICAgICAgICAgZiJTRUxFQ1QgQ09VTlQoKikgRlJPTSBhbmltYWlzIGEgSk9JTiBsb3RlcyBsIE9O'
+    'IGwuaWQ9YS5sb3RlX2lkIgogICAgICAgICAgICAgICAgZiIgV0hFUkUgbC5pZCBJTiAoe3BsYWNl'
+    'aG9sZGVyc30pIgogICAgICAgICAgICAgICAgZiIgQU5EIENPQUxFU0NFKGEuYXRpdm8sMSk9MSIs'
+    'CiAgICAgICAgICAgICAgICBpZHNfbG90ZXMsCiAgICAgICAgICAgICkKICAgICAgICAgICAgbiA9'
+    'IGN1ci5mZXRjaG9uZSgpWzBdCiAgICAgICAgZXZvbHVjYW8uYXBwZW5kKHsnbWVzJzogbWVzX3N0'
+    'ciwgJ2FuaW1haXMnOiBufSkKCiAgICByZXR1cm4gZGljdCgKICAgICAgICB0b3RhbF9sb3Rlcz1s'
+    'ZW4obG90ZXMpLAogICAgICAgIHRvdGFsX2FuaW1haXM9dG90YWxfYW5pbWFpcywKICAgICAgICB0'
+    'b3RhbF9tb3J0ZXM9dG90YWxfbW9ydGVzLAogICAgICAgIHRheGFfbW9ydGFsaWRhZGU9dGF4YV9t'
+    'b3J0X2dlcmFsLAogICAgICAgIGN1c3RvX3Nhbml0YXJpbz1jdXN0b19zYW5pdGFyaW8sCiAgICAg'
+    'ICAgY3VzdG9fcG9yX2FuaW1hbD1yb3VuZChjdXN0b19zYW5pdGFyaW8gLyBtYXgodG90YWxfYW5p'
+    'bWFpcywgMSksIDIpLAogICAgICAgIHZhY2luYXNfcGVuZGVudGVzPXZhY2luYXNfcGVuZCwKICAg'
+    'ICAgICBlbV90cmF0YW1lbnRvPWVtX3RyYXRhbWVudG8sCiAgICAgICAgZ21kX2dlcmFsPXJvdW5k'
+    'KGdtZF9nZXJhbCwgMyksCiAgICAgICAgcmlzY29fbWVkaW89cmlzY29fbWVkaW8sCiAgICAgICAg'
+    'bG90ZV9jcml0aWNvPWxvdGVfY3JpdGljbywKICAgICAgICBldm9sdWNhb19hbmltYWlzPWV2b2x1'
+    'Y2FvLAogICAgICAgIG5fbG90ZXNfYWx0b19yaXNjbz1zdW0oMSBmb3IgciBpbiByaXNjb3MgaWYg'
+    'ciA+PSA0MCksCiAgICApCgoKZGVmIHNpbmNyb25pemFyX3RvZG9zX2xvdGVzKCk6CiAgICBsb3Rl'
+    'cyA9IGxpc3Rhcl9sb3RlcygpCiAgICByZXN1bHRhZG9zID0gW10KICAgIGZvciBsIGluIGxvdGVz'
+    'OgogICAgICAgIG4gPSBhdHVhbGl6YXJfcXRkX2xvdGUobFswXSkKICAgICAgICByZXN1bHRhZG9z'
+    'LmFwcGVuZCgobFswXSwgbFsxXSwgbikpCiAgICByZXR1cm4gcmVzdWx0YWRvcwo='
 )
 _db_bytes = __import__('base64').b64decode(''.join(_DB_B64))
 with open('database.py', 'wb') as _f:
@@ -1966,6 +2046,7 @@ from database import (
     listar_pesagens_todos_animais, listar_ocorrencias_todos_animais,
     calcular_gmds_lote, calcular_scores_lote, resumo_dashboard,
     calcular_risco_sanitario, prever_abate, detectar_anomalias_peso, resumo_ia_fazenda,
+    kpis_executivos,
     PLANOS_FAZENDEIRO, PLANOS_VETERINARIO,
     definir_plano_usuario, obter_limites_usuario,
     verificar_limite_animais, verificar_limite_fazendas,
@@ -3118,51 +3199,147 @@ elif menu == "Painel de Decisao":
 # DASHBOARD EXECUTIVO
 # ============================================================
 elif menu == "Dashboard Executivo":
-    hdr("Dashboard Executivo", "KPIs Executivos", "KPIs consolidados do lote")
-    pk = st.number_input("Preco kg (R$)", 0.0, 50.0, 10.0)
-    cd = st.number_input("Custo diario/animal (R$)", 0.0, 100.0, 10.0)
-    lote_id, _ = sel_lote("exec_lote")
-    if lote_id:
-        animais = listar_animais_por_lote(lote_id)
-        if not animais: st.warning("Nenhum animal."); st.stop()
-        ganho = custo_s = dias_t = 0
-        animais_oc = set()
-        gmds = []
-        for a in animais:
-            ps = listar_pesagens(a[0])
-            if len(ps) > 1:
-                df = pd.DataFrame(ps, columns=["id","aid","peso","data"])
-                df["data"] = pd.to_datetime(df["data"])
-                df = df.sort_values("data")
-                g = df["peso"].iloc[-1]-df["peso"].iloc[0]
-                d = (df["data"].iloc[-1]-df["data"].iloc[0]).days
-                if g > 0 and d > 0:
-                    ganho += g; dias_t += d
-                    gmd = g/d
-                    if 0 <= gmd <= 2: gmds.append(gmd)
-            ocs = listar_ocorrencias(a[0])
-            if ocs: animais_oc.add(a[0])
-            for oc in ocs:
-                if oc[6]: custo_s += oc[6]
-        n = len(animais)
-        custo_op = cd * n * dias_t
-        receita  = ganho * pk
-        lucro    = receita - custo_op - custo_s
-        inc      = (len(animais_oc)/n*100) if n>0 else 0
-        gmd_m    = sum(gmds)/len(gmds) if gmds else 0
-        c1,c2,c3 = st.columns(3)
-        c1.metric("Lucro",       f"R$ {lucro:,.2f}")
-        c2.metric("Incidencia",  f"{inc:.2f}%")
-        c3.metric("GMD",         f"{gmd_m:.3f} kg/dia")
-        st.subheader("Status do Lote")
-        if lucro < 0:              st.error("Prejuizo - acao imediata")
-        elif inc > 20:             st.error("Alta incidencia sanitaria")
-        elif gmd_m < 0.5:         st.warning("Baixo desempenho produtivo")
-        elif custo_s > receita*.2: st.warning("Custo sanitario elevado")
-        else:                      st.success("Lote saudavel e lucrativo")
-        st.metric("Animais",        n)
-        st.metric("Ganho total",    f"{ganho:.2f} kg")
-        st.metric("Custo sanitario",f"R$ {custo_s:.2f}")
+    hdr("Dashboard Executivo", "Visao Executiva", "KPIs consolidados da fazenda com analise de IA")
+
+    with st.spinner("Carregando dados da fazenda..."):
+        kpis = kpis_executivos(owner_id=_owner_id())
+
+    if not kpis:
+        st.warning("Nenhum lote cadastrado. Cadastre lotes e animais para ver o dashboard.")
+        st.stop()
+
+    # ── Linha 1: KPIs principais ──────────────────────────────────────────────
+    st.subheader("Visao Geral da Fazenda")
+    card_kpi_row([
+        dict(titulo="Total de Lotes",     valor=kpis['total_lotes']),
+        dict(titulo="Animais Ativos",      valor=kpis['total_animais']),
+        dict(titulo="GMD Medio Geral",     valor=f"{kpis['gmd_geral']:.3f} kg/d",
+             cor='#1565C0' if kpis['gmd_geral'] >= 0.8 else '#E65100'),
+        dict(titulo="Taxa Mortalidade",    valor=f"{kpis['taxa_mortalidade']}%",
+             cor='#B71C1C' if kpis['taxa_mortalidade'] > 2 else '#1F5C2E'),
+        dict(titulo="Custo Sanitario",     valor=f"R$ {kpis['custo_sanitario']:,.0f}",
+             subtitulo=f"R$ {kpis['custo_por_animal']:.0f}/animal"),
+    ])
+    st.write("")
+
+    # ── Linha 2: Alertas ──────────────────────────────────────────────────────
+    col_al1, col_al2, col_al3, col_al4 = st.columns(4)
+    with col_al1:
+        st.metric("Vacinas Pendentes",  kpis['vacinas_pendentes'],
+                 delta="atencao" if kpis['vacinas_pendentes'] > 0 else None,
+                 delta_color="inverse")
+    with col_al2:
+        st.metric("Em Tratamento",      kpis['em_tratamento'],
+                 delta="atencao" if kpis['em_tratamento'] > 0 else None,
+                 delta_color="inverse")
+    with col_al3:
+        st.metric("Risco Medio",        f"{kpis['risco_medio']}/100",
+                 delta="alto" if kpis['risco_medio'] >= 40 else None,
+                 delta_color="inverse")
+    with col_al4:
+        st.metric("Lotes Alto Risco",   kpis['n_lotes_alto_risco'],
+                 delta="critico" if kpis['n_lotes_alto_risco'] > 0 else None,
+                 delta_color="inverse")
+
+    st.divider()
+
+    # ── Linha 3: Lote mais critico ────────────────────────────────────────────
+    col_crit, col_evol = st.columns([1, 2])
+
+    with col_crit:
+        st.subheader("Lote Mais Critico")
+        lc = kpis['lote_critico']
+        if lc:
+            cores_n = {'Critico':'#B71C1C','Alto':'#E65100','Medio':'#F9A825',
+                      'Baixo':'#2E7D4F','Saudavel':'#1B5E20'}
+            cor_lc = cores_n.get(lc['risco_nivel'], '#546E7A')
+            st.markdown(
+                f"<div style='background:{cor_lc}22;border-left:4px solid {cor_lc};"
+                f"border-radius:8px;padding:16px'>"
+                f"<div style='font-size:18px;font-weight:700;color:{cor_lc}'>"
+                f"{lc['lote_nome']}</div>"
+                f"<div style='font-size:32px;font-weight:700;margin:8px 0'>"
+                f"{lc['risco_score']}<span style='font-size:14px'>/100</span></div>"
+                f"<div style='font-size:13px;color:#444'>{lc['risco_nivel']}</div>"
+                f"<div style='font-size:12px;color:#666;margin-top:8px'>"
+                f"{lc['principal_risco']}</div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            st.caption(f"{lc['animais_ativos']} animais ativos")
+        else:
+            st.success("Nenhum lote em situacao critica!")
+
+        st.write("")
+        st.subheader("Situacao Sanitaria")
+        if kpis['taxa_mortalidade'] >= 3:
+            st.error(f"Mortalidade critica: {kpis['taxa_mortalidade']}%")
+        elif kpis['taxa_mortalidade'] >= 1:
+            st.warning(f"Mortalidade elevada: {kpis['taxa_mortalidade']}%")
+        else:
+            st.success("Mortalidade dentro do normal")
+
+        if kpis['gmd_geral'] >= 0.8:
+            st.success(f"GMD excelente: {kpis['gmd_geral']:.3f} kg/d")
+        elif kpis['gmd_geral'] >= 0.5:
+            st.warning(f"GMD moderado: {kpis['gmd_geral']:.3f} kg/d")
+        else:
+            st.error(f"GMD abaixo do esperado: {kpis['gmd_geral']:.3f} kg/d")
+
+    with col_evol:
+        st.subheader("Ranking de Risco dos Lotes")
+        resumo_r = resumo_ia_fazenda(owner_id=_owner_id())
+        if resumo_r:
+            df_rank = pd.DataFrame(resumo_r)[
+                ['lote_nome','risco_nivel','risco_score','animais_ativos','principal_risco']
+            ]
+            df_rank.columns = ['Lote','Nivel','Score','Animais','Principal Risco']
+            st.dataframe(df_rank, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # ── Linha 4: Previsao de abate e anomalias ────────────────────────────────
+    col_prev, col_anom = st.columns(2)
+
+    with col_prev:
+        st.subheader("Previsao de Abate por Lote")
+        col_p1, col_p2 = st.columns(2)
+        with col_p1: peso_exec = st.number_input("Peso alvo (kg)", 300.0, 600.0, 450.0, key="exec_pa")
+        with col_p2: preco_exec = st.number_input("Preco/kg (R$)", 1.0, 50.0, 10.0, key="exec_pp")
+
+        total_prontos = total_proximos = total_receita = 0
+        for lid in [l[0] for l in _listar_lotes_usuario()]:
+            try:
+                prev = prever_abate(lid, peso_exec, preco_exec, 12.0)
+                total_prontos  += sum(1 for p in prev if p['status'] == 'Pronto para abate')
+                total_proximos += sum(1 for p in prev if p['status'] == 'Proximo do abate')
+                total_receita  += sum(p['receita_prevista'] or 0 for p in prev if p['receita_prevista'])
+            except Exception:
+                pass
+
+        st.metric("Prontos para abate", total_prontos,
+                 delta="acao" if total_prontos > 0 else None)
+        st.metric("Proximos (30 dias)", total_proximos)
+        st.metric("Receita estimada total", f"R$ {total_receita:,.0f}")
+
+    with col_anom:
+        st.subheader("Anomalias de Peso Detectadas")
+        total_anom = total_graves = 0
+        for lid in [l[0] for l in _listar_lotes_usuario()]:
+            try:
+                anoms = detectar_anomalias_peso(lid)
+                total_anom   += len(anoms)
+                total_graves += sum(1 for a in anoms if a['gravidade'] == 'Alta')
+            except Exception:
+                pass
+
+        if total_anom == 0:
+            st.success("Nenhuma anomalia detectada na fazenda")
+        else:
+            st.metric("Total de anomalias", total_anom)
+            if total_graves > 0:
+                st.error(f"{total_graves} anomalia(s) de gravidade ALTA")
+            st.caption("Acesse Analise > Anomalias de Peso para detalhes por lote")
 
 # ============================================================
 # PESQUISAR OCORRENCIAS
