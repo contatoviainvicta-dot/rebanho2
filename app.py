@@ -1965,6 +1965,7 @@ from database import (
     gerar_insights_lote,
     listar_pesagens_todos_animais, listar_ocorrencias_todos_animais,
     calcular_gmds_lote, calcular_scores_lote, resumo_dashboard,
+    calcular_risco_sanitario, prever_abate, detectar_anomalias_peso, resumo_ia_fazenda,
     PLANOS_FAZENDEIRO, PLANOS_VETERINARIO,
     definir_plano_usuario, obter_limites_usuario,
     verificar_limite_animais, verificar_limite_fazendas,
