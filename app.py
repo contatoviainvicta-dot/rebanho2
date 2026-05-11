@@ -3980,53 +3980,151 @@ elif menu == "Backup":
 # NOTIFICACOES
 # ============================================================
 elif menu == "Notificacoes":
-    hdr("Notificacoes", "Central de Notificacoes", "Alertas por e-mail")
+    hdr("Notificacoes", "Central de Notificacoes", "Alertas automaticos e manuais por e-mail")
+
     if not email_configurado():
-        st.warning("E-mail nao configurado.")
-        st.markdown("""
-**Para configurar:** crie `.streamlit/secrets.toml` com:
-```
-[email]
+        st.warning("E-mail nao configurado. Configure em .streamlit/secrets.toml:")
+        st.code("""[email]
 smtp_host     = smtp.gmail.com
 smtp_port     = 587
 smtp_user     = seu@gmail.com
-smtp_password = senha_app
-remetente     = Gestao Pecuaria <seu@gmail.com>
-```
-Use **Senha de App** do Google (nao a senha da conta).
-""")
+smtp_password = senha_app_google
+remetente     = Gestao Pecuaria <seu@gmail.com>""", language="toml")
+        st.info("Use Senha de App do Google - nao a senha da conta. Veja: myaccount.google.com/apppasswords")
     else:
-        st.success("E-mail configurado.")
-        c1,c2 = st.columns(2)
-        with c1:
-            st.metric("Vacinas pendentes", len(pend))
-            if pend and st.button("Enviar alerta vacinas"):
-                vs = [{"lote":v[2],"vacina":v[3],"data_prevista":v[4]} for v in pend]
-                ok, msg = email_vacina_pendente(u["email"], u["nome"], vs)
-                st.success(msg) if ok else st.error(msg)
-            st.metric("Partos previstos", len(parto))
-            if parto and st.button("Enviar alerta partos"):
-                pts = [{"animal":p[1],"lote":p[2],"data_parto_previsto":p[3]} for p in parto]
-                ok, msg = email_parto_previsto(u["email"], u["nome"], pts)
-                st.success(msg) if ok else st.error(msg)
-        with c2:
-            st.metric("Medicamentos criticos", len(crit))
-            if crit and st.button("Enviar alerta meds"):
-                meds = [{"nome":m[1],"estoque_atual":m[3],"unidade":m[2],"validade":m[5] or ""} for m in crit]
-                ok, msg = email_medicamento_critico(u["email"], u["nome"], meds)
-                st.success(msg) if ok else st.error(msg)
-        if u["perfil"] == "admin":
-            st.divider()
-            st.subheader("Gestao de Planos")
-            usuarios = listar_usuarios()
-            if usuarios:
-                df_u = pd.DataFrame(usuarios, columns=["ID","Nome","Email","Perfil","Fazenda"])
-                st.dataframe(df_u, use_container_width=True)
-            with st.form("form_conv"):
-                uid_c = st.number_input("ID usuario para converter para PAGO", 1, step=1)
-                if st.form_submit_button("Converter para pago"):
-                    converter_para_pago(int(uid_c))
-                    st.success(f"Usuario {uid_c} convertido!"); st.rerun()
+        st.success("E-mail configurado e pronto para envio.")
+
+    st.divider()
+    tab_alertas, tab_risco, tab_abate, tab_config = st.tabs([
+        "Alertas do Sistema", "Alerta de Risco IA", "Alerta de Abate IA", "Historico"
+    ])
+
+    with tab_alertas:
+        st.subheader("Alertas manuais")
+        col_a1, col_a2, col_a3 = st.columns(3)
+
+        with col_a1:
+            st.metric("Vacinas pendentes", len(pend),
+                     delta="atencao" if pend else None, delta_color="inverse")
+            if pend:
+                destino_v = st.text_input("Email destino", value=u["email"], key="dest_vac")
+                if st.button("Enviar alerta vacinas", type="primary", key="btn_vac"):
+                    if email_configurado():
+                        vs = [{"lote":v[2],"vacina":v[3],"data_prevista":v[4]} for v in pend]
+                        ok, msg = email_vacina_pendente(destino_v, u["nome"], vs)
+                        st.success(msg) if ok else st.error(msg)
+                    else:
+                        st.error("Configure o e-mail primeiro")
+            else:
+                st.success("Nenhuma vacina pendente")
+
+        with col_a2:
+            st.metric("Medicamentos criticos", len(crit),
+                     delta="atencao" if crit else None, delta_color="inverse")
+            if crit:
+                destino_m = st.text_input("Email destino", value=u["email"], key="dest_med")
+                if st.button("Enviar alerta meds", type="primary", key="btn_med"):
+                    if email_configurado():
+                        meds = [{"nome":m[1],"estoque_atual":m[3],"unidade":m[2],"validade":m[5] or ""} for m in crit]
+                        ok, msg = email_medicamento_critico(destino_m, u["nome"], meds)
+                        st.success(msg) if ok else st.error(msg)
+                    else:
+                        st.error("Configure o e-mail primeiro")
+            else:
+                st.success("Estoque OK")
+
+        with col_a3:
+            st.metric("Partos previstos 30d", len(parto))
+            if parto:
+                destino_p = st.text_input("Email destino", value=u["email"], key="dest_par")
+                if st.button("Enviar alerta partos", type="primary", key="btn_par"):
+                    if email_configurado():
+                        pts = [{"animal":p[1],"lote":p[2],"data_parto_previsto":p[3]} for p in parto]
+                        ok, msg = email_parto_previsto(destino_p, u["nome"], pts)
+                        st.success(msg) if ok else st.error(msg)
+                    else:
+                        st.error("Configure o e-mail primeiro")
+            else:
+                st.info("Nenhum parto previsto")
+
+    with tab_risco:
+        st.subheader("Alerta de Risco Sanitario por IA")
+        st.caption("Envia analise de risco de todos os lotes para um email")
+        lotes_risco = _listar_lotes_usuario()
+        if not lotes_risco:
+            st.info("Nenhum lote cadastrado.")
+        else:
+            with st.spinner("Calculando riscos..."):
+                resumo_r = resumo_ia_fazenda(owner_id=_owner_id())
+
+            # Mostrar resumo
+            criticos_ia = [r for r in resumo_r if r['risco_nivel'] in ['Critico','Alto']]
+            if criticos_ia:
+                st.error(f"{len(criticos_ia)} lote(s) com risco Alto ou Critico!")
+                for r in criticos_ia:
+                    st.warning(f"**{r['lote_nome']}** - {r['risco_nivel']} ({r['risco_score']}pts) - {r['principal_risco']}")
+            else:
+                st.success("Nenhum lote em situacao critica.")
+
+            destino_r = st.text_input("Enviar relatorio para", value=u["email"], key="dest_risco")
+            if st.button("Enviar relatorio de risco por email", type="primary", key="btn_risco"):
+                if email_configurado():
+                    # Montar lista de vacinas pendentes como proxy de risco
+                    vs_r = [{"lote":r['lote_nome'],
+                             "vacina":f"Risco {r['risco_nivel']} ({r['risco_score']}pts)",
+                             "data_prevista":r['principal_risco']} for r in resumo_r]
+                    ok, msg = email_vacina_pendente(destino_r, u["nome"], vs_r)
+                    st.success("Relatorio enviado!") if ok else st.error(msg)
+                else:
+                    st.error("Configure o e-mail primeiro")
+
+    with tab_abate:
+        st.subheader("Alerta de Animais Proximos do Abate")
+        lote_id_ab, _ = sel_lote("notif_abate_lote")
+        if lote_id_ab:
+            col_ab1, col_ab2, col_ab3 = st.columns(3)
+            with col_ab1: peso_ab = st.number_input("Peso alvo (kg)", 300.0, 600.0, 450.0, key="notif_pa")
+            with col_ab2: preco_ab = st.number_input("Preco/kg (R$)", 1.0, 50.0, 10.0, key="notif_pp")
+            with col_ab3: custo_ab = st.number_input("Custo diario (R$)", 1.0, 100.0, 12.0, key="notif_cd")
+
+            with st.spinner("Calculando previsoes..."):
+                prev_ab = prever_abate(lote_id_ab, peso_ab, preco_ab, custo_ab)
+
+            prontos_ab = [p for p in prev_ab
+                         if p['status'] in ['Pronto para abate','Proximo do abate']]
+            st.metric("Animais prontos ou proximos", len(prontos_ab))
+
+            if prontos_ab:
+                destino_ab = st.text_input("Enviar para", value=u["email"], key="dest_abate")
+                if st.button("Enviar alerta de abate", type="primary", key="btn_abate"):
+                    if email_configurado():
+                        lista_ab = [{"animal":p['identificacao'],
+                                    "lote": lote_id_ab,
+                                    "peso_atual":p['peso_atual'],
+                                    "peso_alvo":peso_ab,
+                                    "data_prevista":p['data_prevista'] or "Pronto"} for p in prontos_ab]
+                        ok, msg = email_abate_previsto(destino_ab, u["nome"], lista_ab)
+                        st.success(msg) if ok else st.error(msg)
+                    else:
+                        st.error("Configure o e-mail primeiro")
+            else:
+                st.info("Nenhum animal proximo do peso de abate com os parametros atuais.")
+
+    with tab_config:
+        st.info("Historico de notificacoes enviadas em breve.")
+
+    if u["perfil"] == "admin":
+        st.divider()
+        st.subheader("Gestao de Planos")
+        usuarios = listar_usuarios()
+        if usuarios:
+            df_u = pd.DataFrame(usuarios, columns=["ID","Nome","Email","Perfil","Fazenda"])
+            st.dataframe(df_u, use_container_width=True)
+        with st.form("form_conv"):
+            uid_c = st.number_input("ID usuario para converter para PAGO", 1, step=1)
+            if st.form_submit_button("Converter para pago"):
+                converter_para_pago(int(uid_c))
+                st.success(f"Usuario {uid_c} convertido!"); st.rerun()
 
 # ============================================================
 # LOG AUDITORIA
