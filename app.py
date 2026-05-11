@@ -2106,265 +2106,65 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── BOVIX Design System ───────────────────────────────────────────────────────
-st.markdown("""
-<style>
+# ── BOVIX Visual ─────────────────────────────────────────────────────────────
+st.markdown("""<style>
+/* Fonte Inter */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; }
 
-/* ── Variaveis de cor BOVIX ── */
-:root {
-    --bovix-verde:   #1A3C2E;
-    --bovix-neon:    #4ADE80;
-    --bovix-ouro:    #C8860A;
-    --bovix-ouro-bg: #FFFBF0;
-    --bovix-ouro-bdr:#F5D988;
-}
-
-/* ── Fonte global ── */
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif !important;
-}
-
-/* ── Sidebar verde escuro ── */
-section[data-testid="stSidebar"] {
-    background-color: #1A3C2E !important;
-}
-section[data-testid="stSidebar"] * {
-    color: rgba(255,255,255,0.85) !important;
-}
-
-/* ── Botoes da sidebar ── */
-section[data-testid="stSidebar"] button {
-    background: transparent !important;
-    border: none !important;
-    color: rgba(255,255,255,0.65) !important;
-    text-align: left !important;
-    border-radius: 6px !important;
-    transition: all 0.15s !important;
-}
-section[data-testid="stSidebar"] button:hover {
-    background: rgba(74,222,128,0.1) !important;
-    color: #4ADE80 !important;
-}
-section[data-testid="stSidebar"] button[kind="primary"],
-section[data-testid="stSidebar"] button.selected {
-    background: rgba(74,222,128,0.12) !important;
-    border-left: 2px solid #4ADE80 !important;
-    color: #4ADE80 !important;
-    font-weight: 600 !important;
-}
-
-/* ── Sidebar radio/selectbox labels ── */
-section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span {
-    color: rgba(255,255,255,0.7) !important;
-}
-
-/* ── Sidebar divider ── */
-section[data-testid="stSidebar"] hr {
-    border-color: rgba(255,255,255,0.08) !important;
-}
-
-/* ── Titulos de grupo no sidebar (CADASTROS, ANALISE etc) ── */
-section[data-testid="stSidebar"] .stMarkdown p {
-    font-size: 9px !important;
-    letter-spacing: 1.5px !important;
-    color: rgba(255,255,255,0.3) !important;
-    text-transform: uppercase !important;
-}
-
-/* ── Fundo principal branco ── */
-.main .block-container {
-    background-color: #FFFFFF !important;
-    padding-top: 1.5rem !important;
-    padding-bottom: 2rem !important;
-}
-
-/* ── Metricas (st.metric) ── */
-[data-testid="metric-container"] {
-    background: #FFFFFF;
-    border: 0.5px solid #EEEEEE;
-    border-left: 3px solid #1A3C2E;
-    border-radius: 8px;
-    padding: 12px 16px !important;
-}
-[data-testid="metric-container"] [data-testid="stMetricLabel"] {
-    font-size: 11px !important;
-    color: #999 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-[data-testid="metric-container"] [data-testid="stMetricValue"] {
-    font-size: 26px !important;
-    font-weight: 700 !important;
-    color: #1A1A1A !important;
-}
-[data-testid="metric-container"] [data-testid="stMetricDelta"] {
-    font-size: 11px !important;
-}
-
-/* ── Botoes primarios ── */
-button[kind="primary"] {
-    background-color: #1A3C2E !important;
-    border: none !important;
+/* Botao primario verde BOVIX */
+.stButton > button[kind="primary"] {
+    background: #1A3C2E !important;
     color: #fff !important;
+    border: none !important;
     font-weight: 600 !important;
     border-radius: 6px !important;
-    transition: opacity 0.15s !important;
 }
-button[kind="primary"]:hover {
-    opacity: 0.85 !important;
-}
+.stButton > button[kind="primary"]:hover { background: #2E5C46 !important; }
 
-/* ── Botoes secundarios ── */
-button[kind="secondary"] {
-    border: 1px solid #1A3C2E !important;
+/* Botao secundario */
+.stButton > button[kind="secondary"] {
+    border: 1.5px solid #1A3C2E !important;
     color: #1A3C2E !important;
     font-weight: 500 !important;
     border-radius: 6px !important;
-    background: transparent !important;
-}
-button[kind="secondary"]:hover {
-    background: #1A3C2E12 !important;
 }
 
-/* ── Tabs ── */
-[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    border-bottom: 2px solid #F0F0F0 !important;
-    gap: 0 !important;
-}
-[data-testid="stTabs"] [data-baseweb="tab"] {
+/* Tabs - linha ativa verde neon */
+.stTabs [data-baseweb="tab-list"] { border-bottom: 2px solid #E8E8E8 !important; }
+.stTabs [data-baseweb="tab"] {
     font-size: 13px !important;
     font-weight: 500 !important;
-    color: #888 !important;
     padding: 8px 16px !important;
-    border-bottom: 2px solid transparent !important;
-    margin-bottom: -2px !important;
 }
-[data-testid="stTabs"] [aria-selected="true"] {
+.stTabs [aria-selected="true"] {
     color: #1A3C2E !important;
-    border-bottom: 2px solid #4ADE80 !important;
-    font-weight: 600 !important;
-}
-
-/* ── Inputs e selects ── */
-[data-testid="stTextInput"] input,
-[data-testid="stNumberInput"] input,
-[data-testid="stSelectbox"] select,
-.stTextArea textarea {
-    border: 1px solid #E0E0E0 !important;
-    border-radius: 6px !important;
-    font-family: 'Inter', sans-serif !important;
-    font-size: 13px !important;
-}
-[data-testid="stTextInput"] input:focus,
-[data-testid="stNumberInput"] input:focus,
-.stTextArea textarea:focus {
-    border-color: #4ADE80 !important;
-    box-shadow: 0 0 0 2px #4ADE8030 !important;
-}
-
-/* ── Alertas success/warning/error ── */
-[data-testid="stAlert"][kind="success"],
-.element-container div[data-baseweb="notification"][kind="positive"] {
-    border-left: 3px solid #4ADE80 !important;
-    background: #F0FDF4 !important;
-    border-radius: 0 6px 6px 0 !important;
-}
-[data-testid="stAlert"][kind="warning"] {
-    border-left: 3px solid #C8860A !important;
-    background: #FFFBF0 !important;
-    border-radius: 0 6px 6px 0 !important;
-}
-[data-testid="stAlert"][kind="error"] {
-    border-left: 3px solid #DC2626 !important;
-    border-radius: 0 6px 6px 0 !important;
-}
-
-/* ── Expander ── */
-[data-testid="stExpander"] {
-    border: 0.5px solid #EEEEEE !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;
-}
-[data-testid="stExpander"] summary {
-    font-weight: 500 !important;
-    color: #1A1A1A !important;
-}
-
-/* ── Dataframe / tabelas ── */
-[data-testid="stDataFrame"] {
-    border: 0.5px solid #EEEEEE !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;
-}
-
-/* ── Spinner ── */
-[data-testid="stSpinner"] {
-    color: #4ADE80 !important;
-}
-
-/* ── Progress bar ── */
-[data-testid="stProgressBar"] > div {
-    background-color: #4ADE80 !important;
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1A3C2E44; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #1A3C2E88; }
-
-/* ── Titulos h1 h2 h3 ── */
-h1, h2, h3 {
-    color: #1A1A1A !important;
-    font-family: 'Inter', sans-serif !important;
-}
-
-/* ── Logo BOVIX no topo da sidebar ── */
-.bovix-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 4px 0 8px;
-}
-.bovix-logo-text {
-    font-size: 22px;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.5px;
-    line-height: 1;
-}
-.bovix-logo-text span { color: #4ADE80; }
-.bovix-logo-sub {
-    font-size: 8px;
-    color: rgba(255,255,255,0.35);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-top: 2px;
-}
-.bovix-plan-badge {
-    background: rgba(200,134,10,0.15);
-    border: 0.5px solid rgba(200,134,10,0.35);
-    border-radius: 6px;
-    padding: 6px 10px;
-    margin-top: 8px;
-}
-.bovix-plan-badge .plan-label {
-    font-size: 8px !important;
-    color: #C8860A !important;
     font-weight: 700 !important;
-    letter-spacing: 1px !important;
-    text-transform: uppercase !important;
+    border-bottom: 3px solid #4ADE80 !important;
 }
-.bovix-plan-badge .plan-info {
-    font-size: 10px !important;
-    color: rgba(255,255,255,0.5) !important;
-    margin-top: 2px !important;
+
+/* Metricas com borda esquerda verde */
+[data-testid="metric-container"] {
+    border-left: 3px solid #1A3C2E !important;
+    border-radius: 0 8px 8px 0 !important;
+    padding-left: 12px !important;
+    background: #fff !important;
 }
-</style>
-""", unsafe_allow_html=True)
+
+/* Scrollbar fina e visivel */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F0F0F0; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #1A3C2E; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2E5C46; }
+
+/* Focus em inputs verde */
+input:focus, textarea:focus, select:focus {
+    border-color: #4ADE80 !important;
+    box-shadow: 0 0 0 2px rgba(74,222,128,0.2) !important;
+}
+</style>""", unsafe_allow_html=True)
+
+
 
 # Inicializar banco (detecta automaticamente se ja existe - 1 query)
 if "banco_ok" not in st.session_state:
